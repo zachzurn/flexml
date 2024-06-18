@@ -1,65 +1,60 @@
-# WIP * RFC
-### flexml
+# Flexbox + css based document rendering (FLEX:ML)
 
-Project is currently a toy project. Do not attempt to use anything in this repo.
+Project is currently a toy project.
 
-# Goals
+## Goals
 
-Make a fast and low memory renderer for invoice, reports, receipt type documents. No interactivity outside of links.
+Make a fast and low memory renderer for invoices, reports, receipt type documents as well as any design type templates. No interactivity is planned.
 
-# Markup
+The current option is to use html for something it is not designed for.
 
-Simple block format with minimal markup.
+* Somewhat low memory use / somewhat fast
+* Ability to create very large documents
+* Minimal markup
+* Simple markup
 
-Elements can start with and @ symbol and then a-z A-Z 1-9 characters with dashes and periods.
 
-Elements that start with @ are macro elements that can set context, style or generate more elements.
+## Tasks
 
-Container with flex and test class. Child container with box and test class. Text Content node inside.
+- [x] Parser
+- [ ] Rendering Abstraction
+- [ ] Image Renderer
+- [ ] PDF Renderer
+
+## Markup
+
+Everything is based on elements with classes. Elements must start with a list of classnames separated by periods and then an open curly brace.
+Elements can also use block syntax which stars with 3 uppercase characters and followed by a colon.
 
 ```
-flex.test {
-    box.test {
-        Text content
+class.anotherclass{
+
+    Some text
+
+    RAW:class.anotherclass{
+    
+        A RAW block that can have special behavior.
+        This block preserves whitespace and ignores any element markup.
+        
     }
+    
 }
 ```
 
-Css Macro
+## Css
 
+Css can be defined using block syntax (currently called macro in code and will be renamed).
 
 ```
 CSS:{
     .red {
         color: red;
-    }    
-}
-```
-
-Csv macro, behaves like table macro
-```
-CSV:{
-    20%,20
-    type,name
-    dog,kobe
+    }
 }
 ```
 
 ## Base Styles
 
-Base styles will be defined for common html parallels
+Base styles will be defined for common html parallels.
 
-flex, box, h1, h2, h3, h4, h5, b, i, u, table, tr, td, th, p, span
-
-```
-p {  }
-
-h1{ A Header }
-
-table{
-    tr { td{ Text } td{ Text } td{ Text } }
-    tr { td{ Text } td{ Text } td{ Text } }
-    tr { td{ Text } td{ Text } td{ Text } }
-}
-
-```
+hflex, vflex, box, h1, h2, h3, h4, h5, b, i, u, table, row, cell, span
