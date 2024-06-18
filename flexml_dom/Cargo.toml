@@ -1,0 +1,9 @@
+[package]
+name = "flexml_dom"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+chumsky = "0.9.3"
+logos = "0.14.0"
+log = "0.4.21"

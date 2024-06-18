@@ -1,0 +1,56 @@
+CSS:{
+
+ .red {
+
+ }
+
+
+
+}
+
+//A flex box with horizontal class
+hbox{
+
+    h1{ This is an h1 }
+
+    This is some normal text content
+
+    And this is some more text content
+
+    This is a paragraph s{ This is a span }
+
+//This is an early terminated bracket
+
+    IMG:{{ width: 300, height: 200, path: ./test.png }}
+
+    BRK:{}
+
+    RAW:{
+        test{ }
+
+        RAW:{}
+    }
+
+    CSV:red.color{
+        test, test2,
+        this, test
+    }
+
+    tbl{
+        row.header{
+            col{ doggo }  col.red{ doggo } col{ doggo }
+            col{ doggo } col{ doggo } col{ doggo }
+        }
+            row{
+                col{ item.test * 12 }
+                col.red{ item.data2 }
+                col{ doggo }
+                col{ doggo }
+                col{ doggo }
+                col{ doggo }
+            }
+
+        {{endloop}}
+    }
+
+}

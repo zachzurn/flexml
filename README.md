@@ -5,7 +5,7 @@ Project is currently a toy project. Do not attempt to use anything in this repo.
 
 # Goals
 
-Make a fast and low memory renderer for invoice, simple reports, receipt type documents. No interactivity
+Make a fast and low memory renderer for invoice, reports, receipt type documents. No interactivity outside of links.
 
 # Markup
 
@@ -25,75 +25,25 @@ flex.test {
 }
 ```
 
-Config macro json. Define page width and height in inches (0 means infinite).
-Pixels per inch. Pages can be infinitely wide or tall to allow for paging.
+Css Macro
 
 
 ```
-@cnf{
-    "ppi" : 96,
-    "page_width" : 8.5,
-    "page_height" : 0,
-}
-```
-
-Css macro with blue and bold class.
-
-```
-@css{
-    .main {
-        font-size: 30px;
-    }
-}
-```
-
-Markdown macro with class main. Markdown macro uses first line as base spaces.
-
-```
-@mkd.main {
-    ## Try CommonMark
-    
-    You can try CommonMark here.  This dingus is powered by
-    [commonmark.js](https://github.com/commonmark/commonmark.js), the
-    JavaScript reference implementation.
-
-    1. item one
-    2. item two
-    - sublist
-    - sublist
-}
-```
-
-Table macro
-```
-@tbl {
-    "header": ["Type","Name"]
-    "header_width": ["20%","20"],
-    "rows": [
-        ["Dog",Kobe"],
-        ["Dog",Kobe"],
-    ]
+CSS:{
+    .red {
+        color: red;
+    }    
 }
 ```
 
 Csv macro, behaves like table macro
 ```
-@csv {
+CSV:{
     20%,20
     type,name
     dog,kobe
 }
 ```
-
-Header and footer macros are pulled out of context and repeated on every page
-```
-@top {}
-@bot {}
-```
-
-## Supported css attributes
-
-display: flex | block | inline
 
 ## Base Styles
 
@@ -106,7 +56,7 @@ p {  }
 
 h1{ A Header }
 
-table {
+table{
     tr { td{ Text } td{ Text } td{ Text } }
     tr { td{ Text } td{ Text } td{ Text } }
     tr { td{ Text } td{ Text } td{ Text } }
