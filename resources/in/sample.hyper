@@ -1,0 +1,23 @@
+[HYPER
+    css: style.css
+    width: 8.5
+    height: 11
+    dpi: 72
+]
+
+[CSS
+
+
+
+]
+
+
+This is some text which is [red in red ] and this is [blue: blue text ].
+
+[p This is a paragraph ]
+
+[IMG file: /var/www/vhosts/test.png ]
+
+[TABLE
+
+]
