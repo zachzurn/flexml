@@ -1,15 +1,14 @@
-pub mod document;
-pub mod parser;
+use crate::parsing::parser::Parser;
 
-use std::fs;
-use std::path::PathBuf;
+pub mod parsing;
+pub mod document;
 
 fn main() {
-    let mut testfile_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    testfile_path.push("resources/test.flexml");
+    let input = "[bold+italic this is some text ]";
 
-    let src = fs::read_to_string(testfile_path).expect("Failed to read file");
-    let document = parser::parse_document(&src);
+    let mut parser = Parser::new(input);
 
-    println!("{:#?}", document);
+    while let Some(node) = parser.parse_next() {
+        println!("{:#?}", node);
+    }
 }

@@ -1,0 +1,32 @@
+{ redBox =
+    colorText: red
+    pad: 2
+}
+
+{ header = bold + sizeText: 2  }
+
+[redBox This box will be red with some padding ]
+
+This is some text [ This is in a box ] and [ Some more ]
+
+[flex
+    [ Some text on the left ] <-> [Some text on the right ]
+]
+
+[table
+    [header [ a column ] [ a column ] ]
+    [ [ a column ] [ a column ] ]
+    [ [ a column ] [ a column ] ]
+]
+
+This is some raw |= text that can have [ literal text in it ] =|
+
+[bold + italic
+  A box with text in it
+]
+
+[small +
+ large +
+ italic
+  This is a box with text [ And another ]
+]
