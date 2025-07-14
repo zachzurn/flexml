@@ -1,14 +1,22 @@
 use std::ops::RangeInclusive;
 use super::nodes::Node;
-use super::parser::{Parser, ParserError};
+use super::parser::{Parser, ParserWarning};
 
-fn parse_all(input: &str) -> (Vec<Node>, Vec<ParserError>) {
+fn parse_all(input: &str) -> (Vec<Node>, Vec<ParserWarning>) {
     let mut parser = Parser::new(input);
     let mut nodes = Vec::new();
     while let Some(node) = parser.parse_next() {
         nodes.push(node);
     }
-    (nodes, parser.errors)
+    (nodes, parser.get_warnings())
+}
+
+fn parse_all_with_parser<'a>(parser: &mut Parser<'a>) -> (Vec<Node<'a>>, Vec<ParserWarning>) {
+    let mut nodes = Vec::new();
+    while let Some(node) = parser.parse_next() {
+        nodes.push(node);
+    }
+    (nodes, parser.get_warnings())
 }
 
 fn check_inputs<'a>(
@@ -223,3 +231,136 @@ fn parse_incomplete_styles() {
     );
 
 }
+
+fn count_box_depth(node: &Node) -> usize {
+    match node {
+        Node::BoxContainer { children, .. } => {
+            let child_depths = children.iter().map(count_box_depth).max().unwrap_or(0);
+            1 + child_depths
+        }
+        _ => 0,
+    }
+}
+
+#[test]
+fn max_node_depth() {
+    //6 deep
+    let input = "[1 [2 [3 [4 [5 [6 [7 [8] 7] 6] 5] 4] 3] 2] 1] []";
+
+    let mut parser = Parser::new(input).with_max_depth(5);
+    let mut nodes = Vec::new();
+    while let Some(node) = parser.parse_next() {
+        nodes.push(node);
+    }
+    let warnings= parser.get_warnings();
+
+    let actual_depth = count_box_depth(&nodes[0]);
+
+    assert_eq!(actual_depth, 5);
+    assert_eq!(warnings.len(), 1);
+
+}
+
+
+fn count_nodes(nodes: &[Node]) -> usize {
+    nodes.iter().map(|node| match node {
+        Node::BoxContainer { children, .. } => {
+            1 + count_nodes(children)
+        }
+        _ => 1, // Leaf nodes
+    }).sum()
+}
+
+
+#[test]
+fn max_nodes() {
+    let inputs = vec![
+        "[1 [2 [3 [4 [5 [6 [7 [8] 7] 6] 5] 4] 3] 2] 1] []",
+        "[] [] [] [] [] [] [] []",
+        "{myStyle = bold} {myOtherStyle = fontSize:3} [ My box [ with a child ] ] [And another box]"
+    ];
+
+    inputs.iter().for_each(|input| {
+        let mut parser = Parser::new(input).with_max_nodes(5);
+        let mut nodes = Vec::new();
+        while let Some(node) = parser.parse_next() {
+            nodes.push(node);
+        }
+
+        let warnings= parser.get_warnings();
+
+        let actual_count = count_nodes(&nodes);
+
+        assert_eq!(actual_count, 5);
+        assert_eq!(warnings.len(), 1);
+    });
+
+}
+
+#[test]
+fn missing_style_definition_warning() {
+    let input = "{myStyle}";
+
+    let mut parser = Parser::new(input);
+    let (_, warnings) = parse_all_with_parser(&mut parser);
+
+    parser.print_warnings("missing_style_definition_warning.flexml");
+
+    assert_eq!(warnings.len(), 1);
+
+}
+
+#[test]
+fn unclosed_style_warning() {
+    let input = "{myStyle bold + italic";
+
+    let mut parser = Parser::new(input);
+    let (_, warnings) = parse_all_with_parser(&mut parser);
+
+    parser.print_warnings("unclosed_style_warning.flexml");
+
+    assert_eq!(warnings.len(), 1);
+
+}
+
+#[test]
+fn node_depth_warning() {
+    let input = "[1 [2 [3 [4 [5 [6 [7 [8] 7] 6] 5] 4] 3] 2] 1] []";
+
+    let mut parser = Parser::new(input).with_max_depth(5);
+    let (_, warnings) = parse_all_with_parser(&mut parser);
+
+    parser.print_warnings("node_depth_warning.flexml");
+
+    assert_eq!(warnings.len(), 1);
+
+}
+
+#[test]
+fn max_nodes_warning() {
+    let input = "[1 [2 [3 [4 [5 [6 [7 [8] 7] 6] 5] 4] 3] 2] 1] []";
+
+    let mut parser = Parser::new(input).with_max_nodes(1);
+    let (_, warnings) = parse_all_with_parser(&mut parser);
+
+    parser.print_warnings("max_nodes_warning.flexml");
+
+    assert_eq!(warnings.len(), 1);
+
+}
+
+
+#[test]
+fn max_nodes_warning_large() {
+    let input = "[1 [2 [3 [4 [5 [6 [7 [8] 7] 6] 5] 4] 3] 2] 1] \r\n [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] \r\n [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []";
+
+    let mut parser = Parser::new(input).with_max_nodes(1);
+    let (_, warnings) = parse_all_with_parser(&mut parser);
+
+    parser.print_warnings("max_nodes_warning_large.flexml");
+
+    assert_eq!(warnings.len(), 1);
+
+}
+
+

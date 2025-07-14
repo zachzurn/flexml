@@ -1,24 +1,46 @@
-use std::ops::Range;
-use logos::{Logos, Lexer, Span};
 use super::nodes::{Node, Style};
 use super::tokens::Token;
 use super::tokens::Token::*;
+pub(crate) use crate::parsing::warnings::ParserWarning;
+use crate::parsing::warnings::ParserWarningKind::*;
+use logos::{Lexer, Logos, Span};
 
+struct Guard {
+    limit: usize,
+    count: usize,
+    exceeded: bool,
+}
 
-#[derive(Debug)]
-pub struct ParserError {
-    pub message: String,
-    pub span: Range<usize>,
-    pub label: String,
-    pub help: String,
+impl Guard {
+    pub fn new(limit: usize) -> Guard {
+        Guard {
+            limit,
+            count: 0,
+            exceeded: false,
+        }
+    }
+
+    pub fn tick(&mut self) -> bool {
+        self.count += 1;
+        self.count > self.limit
+    }
+
+    pub fn reset(&mut self) {
+        self.exceeded = false;
+        self.count = 0;
+    }
 }
 
 pub struct Parser<'a> {
     lexer: Lexer<'a, Token>,
-    input: &'a str,
+    pub(super) input: &'a str,
     peeked: Option<(Token, &'a str)>,
-    styles_parsed: bool,
-    pub errors: Vec<ParserError>,
+    header_parsed: bool,
+    pub(super) warnings: Vec<ParserWarning>,
+    max_depth: usize,
+    max_nodes: usize,
+    node_guard: Guard,
+    depth_guard: Guard,
 }
 
 /// Parse flexml
@@ -39,51 +61,50 @@ impl<'a> Parser<'a> {
             lexer: Token::lexer(input),
             input,
             peeked: None,
-            styles_parsed: false,
-            errors: Vec::new(),
+            header_parsed: false,
+            warnings: Vec::new(),
+            max_depth: 50,
+            max_nodes: 10_000,
+            node_guard: Guard::new(10_000),
+            depth_guard: Guard::new(50),
         }
     }
 
-    /// Records a parser error.
-    /// - `span`: The input range that caused the error.
-    /// - `message`: A short error description.
-    /// - `label`: A label for what the span highlights.
-    /// - `help`: A suggestion for fixing the issue.
-    fn warn(&mut self, span: Range<usize>, message: &str, label: &str, help: &str) {
-        self.errors.push(ParserError {
-            span,
-            message: message.to_owned(),
-            label: label.to_owned(),
-            help: help.to_owned(),
-        });
+    pub fn with_max_depth(mut self, max_depth: usize) -> Self {
+        self.max_depth = max_depth;
+        self.depth_guard.limit = max_depth;
+        self
     }
 
+    pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
+        self.max_nodes = max_nodes;
+        self.node_guard.limit = max_nodes;
+        self
+    }
+}
+
+impl<'a> Parser<'a> {
     /// Advances the lexer to the next valid token and returns it along with its matched input slice.
     /// Errors are ignored but sent off as warnings
     fn next_with_slice(&mut self) -> Option<(Token, &'a str)> {
         while let Some(result) = self.lexer.next() {
-            match result {
+            return match result {
                 Ok(tok) => {
                     let slice = self.lexer.slice();
-                    return Some((tok, slice));
+                    Some((tok, slice))
                 }
                 Err(()) => {
                     let span = self.lexer.span();
                     let slice = &self.input[span.start..span.end];
 
-                    self.warn(
-                        self.lexer.span(),
-                        "There was an error while parsing a token",
-                        &format!("unexpected token or text {}", slice),
-                        "This should not be a problem but please file an issue",
-                    );
+                    self.warn(self.lexer.span(), UnexpectedToken);
 
                     // Errors should not happen but if they do
                     // we still forward it to a Text token to be
                     // collected as text
-                    return Some((Token::Text, slice));
+                    Some((Text, slice))
                 }
-            }
+            };
         }
         None
     }
@@ -106,57 +127,136 @@ impl<'a> Parser<'a> {
         self.peeked.as_ref()
     }
 
+    /// Increment and check that we have not exceeded node count
+    /// Returns false if we cannot afford any more nodes
+    /// issues a single warning even on multiple guard failures
+    /// unless the guard is reset
+    fn spend_node_count(&mut self) -> bool {
+        // We have produced too many nodes if tick is true
+        if self.node_guard.tick() {
+
+            // Fire off a single warning
+            if !self.node_guard.exceeded {
+                self.node_guard.exceeded = true;
+                self.warn(self.lexer.span().start..self.input.len(), ExceededNodeCount);
+            }
+            false
+        } else {
+            true
+        }
+    }
+
+    /// Increment and check that we have not exceeded node depth
+    /// Returns true if we have exceeded the depth and also
+    /// issues a single warning even on multiple guard failures
+    /// unless the guard is reset
+    fn spend_node_depth(&mut self) -> bool {
+        if self.depth_guard.tick() {
+            // Fire off a single warning
+            if self.depth_guard.exceeded == false {
+                self.depth_guard.exceeded = true;
+                self.warn(self.lexer.span(), ExceededNodeDepth);
+            }
+
+            false
+        } else {
+            true
+        }
+    }
+}
+
+impl<'a> Parser<'a> {
     /// Parse the next flexml node
     /// Call this method until None.
     pub fn parse_next(&mut self) -> Option<Node<'a>> {
+        if self.node_guard.exceeded { return None; }
 
-        //Parse styles before anything else
-        if !self.styles_parsed {
-            while let Some((tok, _)) = self.peek() {
-                match tok {
-                    StyleContainerOpen => {
-                        self.take();
-                        return Some(self.parse_style_container());
-                    }
-                    Whitespace | Newline  => {
-                        self.take();
-                    },
-                    _ => {
-                        self.styles_parsed = true;
-                        break;
-                    },
+        // Parse for header nodes
+        if !self.header_parsed {
+            let header_node = self.parse_header();
+
+            if header_node.is_some() {
+                return header_node;
+            } else {
+                self.header_parsed = true;
+            }
+        }
+
+        // Top level container, so reset the depth_guard
+        self.depth_guard.reset();
+        self.parse_content()
+    }
+
+    fn parse_header(&mut self) -> Option<Node<'a>> {
+        while let Some((tok, _)) = self.peek() {
+            match tok {
+                StyleContainerOpen => {
+                    if !self.spend_node_count() { return None; }
+
+                    self.take();
+                    return Some(self.parse_style_container());
+                }
+                Whitespace | Newline => {
+                    self.take();
+                }
+                _ => {
+                    break;
                 }
             }
         }
 
+        None
+    }
+
+    /// Parses content, text, box containers, etc.
+    /// Every time this is called, we check the depth
+    ///
+    fn parse_content(&mut self) -> Option<Node<'a>> {
         while let Some((tok, slice)) = self.take() {
             return match tok {
                 TagContainer => {
+                    //We count this style container as one node
+                    if !self.spend_node_count() { return None; }
+
                     let name = &slice[1..slice.len() - 1];
                     Some(Node::Tag { name })
                 }
 
                 RawOpen => {
+                    if !self.spend_node_count() { return None; }
                     Some(self.parse_raw())
                 }
 
                 BoxContainerOpen => {
-                    Some(self.parse_box_container())
+                    if !self.spend_node_count() { return None; }
+
+                    return if !self.spend_node_depth() {
+                        // Exceeded node depth, skip box
+                        self.skip_box_container();
+                        if let Some(warning) = self.warnings.last_mut() {
+                            if matches!(warning.kind, ExceededNodeDepth) {
+                                warning.span.end = self.lexer.span().end;
+                            }
+                        }
+                        continue;
+                    } else {
+                        Some(self.parse_box_container())
+                    };
                 }
 
                 // We don't care about starting newlines
-                Newline => {
-                    continue
-                }
+                Newline => continue,
 
                 // Anything else gets gathered as text
                 // It's still possible to miss some content
                 // See next_with_slice above
                 _ => {
+                    if !self.spend_node_count() { return None; }
+
                     let current_span = self.lexer.span();
                     Some(self.parse_text_run(current_span))
-                },
-            }
+                }
+            };
         }
 
         None
@@ -185,10 +285,10 @@ impl<'a> Parser<'a> {
     fn skip_whitespace(&mut self) {
         while let Some((tok, _)) = self.peek() {
             match tok {
-             Whitespace | Newline => {
-                 self.take();
-             }
-             _ => break,
+                Whitespace | Newline => {
+                    self.take();
+                }
+                _ => break,
             }
         }
     }
@@ -206,8 +306,7 @@ impl<'a> Parser<'a> {
             match tok {
                 // We collect everything that is not one of these
                 // Newline always starts a new parse loop
-                TagContainer | RawOpen | BoxContainerOpen | Newline | BoxContainerClose =>  {
-                    //TODO maybe on box container close, we should ignore previous whitespace
+                TagContainer | RawOpen | BoxContainerOpen | Newline | BoxContainerClose => {
                     break;
                 }
                 _ => {
@@ -249,12 +348,7 @@ impl<'a> Parser<'a> {
         }
 
         if !end_token_found {
-            self.warn(
-                start..end,
-                "Unterminated raw container",
-                "Raw ended here with no closing tag",
-                "Try adding =| to close the raw container",
-            );
+            self.warn(start..end, UnclosedRawContainer);
         }
 
         Node::Text(&self.input[start..end])
@@ -275,7 +369,7 @@ impl<'a> Parser<'a> {
 
         // Style name
         let name = match self.peek() {
-            Some((Token::Named, _)) => {
+            Some((Named, _)) => {
                 let (_, name) = self.take().unwrap(); // consume the name
                 name
             }
@@ -297,31 +391,47 @@ impl<'a> Parser<'a> {
         let styles = self.parse_styles();
 
         if styles.is_empty() {
-            self.warn(
-                self.lexer.span(),
-                "Style definition has no styles",
-                "Missing styles",
-                "Add some styles like bold+italic"
-            )
+            self.warn(self.lexer.span(), StyleContainerNoStyles)
         }
 
         // Now peek for the closing '}'
         match self.peek() {
-            Some((Token::StyleContainerClose, _)) => {
+            Some((StyleContainerClose, _)) => {
                 // Consume the closing tag
                 self.take();
             }
-            _ => {
-                self.warn(
-                    self.lexer.span(),
-                    "Unclosed style container",
-                    "Missing closing '}'",
-                    "Add '}' to close the style container",
-                );
-            }
+            _ => self.warn(self.lexer.span(), UnclosedStyleContainer),
         }
 
         Node::StyleDefinition { name, styles }
+    }
+
+    /// Skip contents of a box container
+    /// Useful for ignoring deep containers
+    /// While allowing the parser to continue
+    fn skip_box_container(&mut self) {
+        let mut open_boxes = 1;
+
+        while let Some((tok, _)) = self.take() {
+            match tok {
+                BoxContainerOpen => {
+                    open_boxes += 1;
+                }
+                BoxContainerClose => {
+                    open_boxes -= 1;
+                    if open_boxes == 0 {
+                        break;
+                    }
+                }
+                _ => {
+                    // Consumed
+                }
+            }
+        }
+
+        if open_boxes != 0 {
+            self.warn(self.lexer.span(), UnclosedBoxContainer)
+        }
     }
 
     /// Box containers can optionally have styles
@@ -330,26 +440,40 @@ impl<'a> Parser<'a> {
     fn parse_box_container(&mut self) -> Node<'a> {
         let styles = self.parse_styles();
         let mut children = Vec::new();
+        let mut close_found = false;
 
-        while let Some((tok, _)) = self.peek() {
-            match tok {
-                Token::BoxContainerClose => {
-                    self.take();
-                    break;
-                }
-                _ => {
-                    if let Some(child) = self.parse_next() {
-                        children.push(child);
-                    } else {
+        while !self.node_guard.exceeded {
+            if let Some((tok, _)) = self.peek() {
+                match tok {
+                    BoxContainerClose => {
+                        close_found = true;
+                        self.take();
                         break;
+                    }
+                    _ => {
+                        if let Some(child) = self.parse_content() {
+                            children.push(child);
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
         }
 
+        // We are gracefully stopping parsing and don't
+        // want to issue warnings that we haven't checked
+        if self.node_guard.exceeded {
+            close_found = true;
+        }
+
         //Trim trailing text
         if let Some(Node::Text(last)) = children.last_mut() {
             *last = last.trim_end();
+        }
+
+        if !close_found {
+            self.warn(self.lexer.span(), UnclosedBoxContainer);
         }
 
         Node::BoxContainer { styles, children }
@@ -372,12 +496,7 @@ impl<'a> Parser<'a> {
                             value = Some(*arg_val);
                             self.take();
                         } else {
-                            self.warn(
-                                self.lexer.span(),
-                                "Expected style value, but found nothing",
-                                "Missing style value",
-                                "Try removing the : or adding a value",
-                            );
+                            self.warn(self.lexer.span(), ExpectedStyleValue);
                         }
                     }
 
@@ -396,5 +515,4 @@ impl<'a> Parser<'a> {
 
         styles
     }
-
 }
