@@ -1,0 +1,25 @@
+{
+  "name": "flexml-syntax",
+  "displayName": "Flexml Syntax",
+  "description": "Syntax highlighting for the .flexml file format.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "flexml",
+      "aliases": ["Flexml", "flexml"],
+      "extensions": [".flexml"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "flexml",
+      "scopeName": "source.flexml",
+      "path": "./syntaxes/flexml.tmLanguage.json"
+    }]
+  }
+}

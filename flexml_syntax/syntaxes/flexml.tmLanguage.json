@@ -1,0 +1,134 @@
+{
+  "fileTypes": ["flexml"],
+  "name": "Flexml File Format",
+  "scopeName": "source.flexml",
+  "patterns": [
+    {
+      "comment": "Initial pass: Only allow style declarations at the very beginning of the file.",
+      "begin": "(^)",
+      "end": "(?!\\G)",
+      "patterns": [
+        {
+          "comment": "Match style aliases, allowing for multi-line definitions and leading whitespace.",
+          "begin": "\\s*\\{ *([a-zA-Z0-9_-]+) *(?:=|\\s)*",
+          "end": "\\}",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.style.begin.flexml" },
+            "1": { "name": "entity.name.function.style-name.flexml" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.style.end.flexml" }
+          },
+          "contentName": "meta.style.properties.flexml",
+          "patterns": [
+            {
+              "comment": "Style properties like bold, italic:param, fontSize: 3",
+              "match": "\\b([a-zA-Z0-9_+\\-]+)(?::\\s*([a-zA-Z0-9_+\\-.\\s]+))?\\b",
+              "captures": {
+                "1": { "name": "keyword.other.style-property.name.flexml" },
+                "2": { "name": "constant.numeric.flexml" }
+              }
+            }
+          ]
+        },
+        {
+          "comment": "Once a non-style pattern is encountered, switch to the main content context.",
+          "begin": "(?=[^\\s\\{])",
+          "end": "(?!\\G)",
+          "patterns": [
+            { "include": "#main-content" }
+          ]
+        },
+        {
+          "comment": "Fallback for lines that might be empty or just whitespace at the top of the file",
+          "match": "\\s+",
+          "name": "comment.line.whitespace.flexml"
+        }
+      ]
+    }
+  ],
+  "repository": {
+    "main-content": {
+      "patterns": [
+        { "include": "#raw-container" },
+        { "include": "#boxes-with-style" },
+        { "include": "#boxes-without-style" },
+        { "include": "#tags-container" },
+        {
+          "comment": "Catch all for plain text lines that aren't other elements",
+          "match": "[^\\n\\[\\]{}<>|]+",
+          "name": "string.unquoted.text-container.flexml"
+        }
+      ]
+    },
+    "style-list": {
+      "comment": "Helper for parsing style lists inside boxes",
+      "match": "(?:[a-zA-Z0-9_+\\-]+(?:\\s*\\+\\s*[a-zA-Z0-9_\\-]+)*)",
+      "name": "entity.other.attribute-name.box-styles.flexml"
+    },
+    "raw-container": {
+      "comment": "Matches raw strings: |= Anything goes in here and is |= =| not parsed. =|",
+      "begin": "(?<!\\\\)\\|=\\s*",
+      "end": "\\s*=\\|",
+      "name": "string.quoted.raw.flexml",
+      "patterns": [
+        {
+          "match": ".",
+          "name": "constant.character.escape.raw.flexml"
+        }
+      ]
+    },
+    "boxes-with-style": {
+      "comment": "Matches boxes where style immediately follows the opening bracket (e.g., [bold+italic: Some text])",
+      "begin": "\\[([a-zA-Z0-9_+\\-]+(?:\\s*:\\s*[a-zA-Z0-9_+\\-.\\s]+)?(?:\\s*\\+\\s*[a-zA-Z0-9_+\\-]+(?:\\s*:\\s*[a-zA-Z0-9_+\\-.\\s]+)?)*)(?:\\s*:\\s*|\\s+)?",
+      "end": "\\]",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.box.begin.flexml" },
+        "1": { "name": "entity.other.attribute-name.box-styles.flexml" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.box.end.flexml" }
+      },
+      "contentName": "string.unquoted.box-content.flexml",
+      "patterns": [
+        { "include": "#raw-container" },
+        { "include": "#tags-container" },
+        { "include": "#boxes-with-style" },
+        { "include": "#boxes-without-style" },
+        {
+          "comment": "Match any text within a box that's not another element",
+          "match": "[^\\[\\]<>|{]+",
+          "name": "string.unquoted.box-text.flexml"
+        }
+      ]
+    },
+    "boxes-without-style": {
+      "comment": "Matches boxes that start with content (allowing initial whitespace, e.g., [ Some text])",
+      "begin": "\\[\\s*",
+      "end": "\\]",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.box.begin.flexml" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.box.end.flexml" }
+      },
+      "contentName": "string.unquoted.box-content.flexml",
+      "patterns": [
+        { "include": "#raw-container" },
+        { "include": "#tags-container" },
+        { "include": "#boxes-with-style" },
+        { "include": "#boxes-without-style" },
+        {
+          "comment": "Match any text within a box that's not another element",
+          "match": "[^\\[\\]<>|{]+",
+          "name": "string.unquoted.box-text.flexml"
+        }
+      ]
+    },
+    "tags-container": {
+      "comment": "Matches tags like <this_is_a-tag>",
+      "match": "<[a-zA-Z0-9_\\-]+>",
+      "name": "entity.name.tag.flexml"
+    }
+  }
+}

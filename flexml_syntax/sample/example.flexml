@@ -1,0 +1,17 @@
+{ myStyle = bold + italic }
+
+{ myOtherStyle =
+    + bold
+    + italic: param
+    + fontSize: 3
+}
+
+[ This is some <Tag> normal text [ With some more text ] ]
+
+[bold + italic: param + fontSize: 3
+    [ left ] <PageNumber> [ right ]
+]
+
+This is some normal text
+
+[ This is some |= raw [] text =| ]
