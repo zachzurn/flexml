@@ -1,4 +1,4 @@
-{ myStyle = bold + italic }
+{myStyle = bold + italic }
 
 { myOtherStyle =
     + bold
@@ -14,4 +14,8 @@
 
 This is some normal text
 
-[ This is some |= raw [] text =| ]
+[ This is some |= raw [] [ style box ] text =| ]
+
+[
+
+]

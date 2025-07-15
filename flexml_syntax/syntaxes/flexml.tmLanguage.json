@@ -2,6 +2,8 @@
   "fileTypes": ["flexml"],
   "name": "Flexml File Format",
   "scopeName": "source.flexml",
+  "foldingStartMarker": "\\{|\\[|\\|=",
+  "foldingStopMarker": "\\}|\\]|=\\|",
   "patterns": [
     {
       "comment": "Initial pass: Only allow style declarations at the very beginning of the file.",
@@ -9,26 +11,36 @@
       "end": "(?!\\G)",
       "patterns": [
         {
-          "comment": "Match style aliases, allowing for multi-line definitions and leading whitespace.",
-          "begin": "\\s*(\\{)\\s*([a-zA-Z0-9_-]+) *(?:=|\\s)*",
+          "comment": "Match full style container: opening {, name, and optional =.",
+          "begin": "\\s*(\\{)\\s*([a-zA-Z0-9_-]+)\\s*(=)?",
           "end": "\\}",
           "beginCaptures": {
-            "1": { "name": "entity.name.tag.flexml" },
+            "1": { "name": "entity.name.tag.container" },
             "2": { "name": "entity.name.function" },
-            "3": { "name": "punctuation.separator" }
+            "3": { "name": "string.regexp.separator" }
           },
           "endCaptures": {
-            "0": { "name": "entity.name.tag.flexml" }
+            "0": { "name": "entity.name.tag.container" }
           },
           "contentName": "meta.style.properties.flexml",
           "patterns": [
             {
-              "comment": "Style properties like bold, italic:param, fontSize: 3",
-              "match": "\\b([a-zA-Z0-9_+\\-]+)(?::\\s*([a-zA-Z0-9_+\\-.\\s]+))?\\b",
+              "comment": "Colon + param",
+              "match": ":\\s*([a-zA-Z0-9_+\\-\\.]+)",
               "captures": {
-                "1": { "name": "keyword.control" },
-                "2": { "name": "constant.character" }
+                "0": { "name": "string.regexp.separator" },
+                "1": { "name": "constant.character.style_value" }
               }
+            },
+            {
+              "comment": "Plus sign",
+              "match": "\\+",
+              "name": "string.regexp.separator"
+            },
+            {
+              "comment": "Style property name",
+              "match": "\\b[a-zA-Z0-9_\\-]+\\b",
+              "name": "keyword.control.style_name"
             }
           ]
         },
@@ -58,19 +70,25 @@
         {
           "comment": "Catch all for plain text lines that aren't other elements",
           "match": "[^\\n\\[\\]{}<>|]+",
-          "name": "string.unquoted.text-container.flexml"
+          "name": "punctuation.separator.plaintext"
         }
       ]
     },
     "raw-container": {
       "comment": "Matches raw strings: |= Anything goes in here and is |= =| not parsed. =|",
-      "begin": "(?<!\\\\)\\|=\\s*",
-      "end": "\\s*=\\|",
-      "name": "string.quoted.raw.flexml",
+      "begin": "(?<!\\\\)(\\|=)\\s*",
+      "beginCaptures": {
+        "1": { "name": "entity.name.tag.container" }
+      },
+      "end": "\\s*(=\\|)",
+      "endCaptures": {
+        "1": { "name": "entity.name.tag.container" }
+      },
+      "contentName": "string.quoted.raw.flexml",
       "patterns": [
         {
           "match": ".",
-          "name": "string.unquoted.text-container.flexml"
+          "name": "punctuation.separator.plaintext"
         }
       ]
     },
@@ -78,12 +96,12 @@
       "comment": "Boxes with styles before content",
       "begin": "\\[([a-zA-Z0-9_\\-]+)",
       "beginCaptures": {
-        "0": { "name": "entity.name.tag" },
+        "0": { "name": "entity.name.tag.container" },
         "1": { "name": "keyword.control" }
       },
       "end": "\\]",
       "endCaptures": {
-        "0": { "name": "entity.name.tag" }
+        "0": { "name": "entity.name.tag.container" }
       },
       "contentName": "meta.box-content.with-style.flexml",
       "patterns": [
@@ -96,14 +114,14 @@
           "comment": "Colon + style parameter",
           "match": ":\\s*([a-zA-Z0-9_+\\-.]+)",
           "captures": {
-            "0": { "name": "punctuation.separator.colon.flexml" },
+            "0": { "name": "string.regexp.separator" },
             "1": { "name": "constant.character" }
           }
         },
         {
           "comment": "Plus sign",
           "match": "\\+",
-          "name": "punctuation.separator.plus.flexml"
+          "name": "string.regexp.separator"
         },
         {
           "comment": "Whitespace",
@@ -129,7 +147,7 @@
         {
           "comment": "Plain text fallback inside box",
           "match": "[^\\[\\]\\+:]+",
-          "name": "string.unquoted.box-text.flexml"
+          "name": "punctuation.separator.plaintext"
         }
       ]
     },
@@ -138,12 +156,12 @@
       "begin": "\\[\\s*",
       "end": "\\]",
       "beginCaptures": {
-        "0": { "name": "entity.name.tag" }
+        "0": { "name": "entity.name.tag.container" }
       },
       "endCaptures": {
-        "0": { "name": "entity.name.tag" }
+        "0": { "name": "entity.name.tag.container" }
       },
-      "contentName": "string.unquoted.box-content.flexml",
+      "contentName": "Plain text",
       "patterns": [
         { "include": "#raw-container" },
         { "include": "#tags-container" },
@@ -151,7 +169,7 @@
         { "include": "#boxes-without-style" },
         {
           "match": "[^\\[\\]<>|{}]+",
-          "name": "string.unquoted.box-text.flexml"
+          "name": "punctuation.separator.plaintext"
         }
       ]
     },

@@ -1,4 +1,8 @@
-# thermal-vscode README
+
+
+# Flexml TextMate Syntax
+
+Syntax highlighting works for the most part but misses some edge cases.
 
 Provides syntax highlighting for the .flexml file format.
 
