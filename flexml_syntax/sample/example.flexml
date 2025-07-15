@@ -8,7 +8,7 @@
 
 [ This is some <Tag> normal text [ With some more text ] ]
 
-[bold + italic: param + fontSize: 3
+[bold + italic param + fontSize: 3
     [ left ] <PageNumber> [ right ]
 ]
 

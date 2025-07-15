@@ -1,5 +1,5 @@
 {
-  "name": "flexml-syntax",
+  "name": "flexml",
   "displayName": "Flexml Syntax",
   "description": "Syntax highlighting for the .flexml file format.",
   "version": "0.0.1",
