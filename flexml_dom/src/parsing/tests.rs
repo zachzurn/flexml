@@ -1,4 +1,5 @@
 use std::ops::RangeInclusive;
+use std::ptr::read;
 use super::nodes::Node;
 use super::parser::{Parser, ParserWarning};
 
@@ -84,12 +85,15 @@ fn parse_naked_text() {
 
     check_inputs(
         inputs,
-        3..=3,
+        2..=2,
         0..=0,
         &[
-            |n| matches!(n, Node::Text(t) if *t == "Hello "),
-            |n| matches!(n, Node::Text(t) if *t == "] = | =| "),
-            |n| matches!(n, Node::Text(t) if *t == " World {myStyle bold+italic}} < \\|="),
+            |n| if let Node::Text(text) = n { text == &"Hello " } else { false },
+            |n| if let Node::Text(text) = n {
+                text.starts_with(&"] = | =| ") && text.ends_with(" World {myStyle bold+italic}} < \\|=")
+            } else {
+                false
+            },
         ],
     );
 }

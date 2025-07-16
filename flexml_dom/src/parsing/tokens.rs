@@ -3,11 +3,8 @@ use logos::Logos;
 #[derive(Logos, Debug, PartialEq)]
 #[logos(subpattern WS = r"[ \t\f\r\n]*")]
 pub enum Token {
-    #[regex(r"[ \t\f]+", priority = 5)]
+    #[regex(r"[ \t\r\n\f]+", priority = 5)]
     Whitespace,
-
-    #[regex(r"\r\n|\r|\n", priority = 5)]
-    Newline,
 
     #[regex(r"[A-Za-z0-9]+", priority = 5)]
     Named,

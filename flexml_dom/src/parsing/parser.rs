@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
                     self.take();
                     return Some(self.parse_style_container());
                 }
-                Whitespace | Newline => {
+                Whitespace => {
                     self.take();
                 }
                 _ => {
@@ -168,9 +168,6 @@ impl<'a> Parser<'a> {
                     };
                 }
 
-                // We don't care about starting newlines
-                Newline => continue,
-
                 // Anything else gets gathered as text
                 // It's still possible to miss some content
                 // See next_with_slice above
@@ -198,8 +195,7 @@ impl<'a> Parser<'a> {
         while let Some(&(tok, _)) = self.peek().as_ref() {
             match tok {
                 // We collect everything that is not one of these
-                // Newline always starts a new parse loop
-                TagContainer | RawOpen | BoxContainerOpen | Newline | BoxContainerClose => {
+                TagContainer | RawOpen | BoxContainerOpen | BoxContainerClose => {
                     break;
                 }
                 _ => {
@@ -515,7 +511,7 @@ impl<'a> Parser<'a> {
     fn skip_whitespace(&mut self) {
         while let Some((tok, _)) = self.peek() {
             match tok {
-                Whitespace | Newline => {
+                Whitespace => {
                     self.take();
                 }
                 _ => break,

@@ -1,6 +1,6 @@
 { redBox =
-    colorText: red
-    pad: 2
+    + colorText: red
+    + pad: 2
 }
 
 { header = bold + sizeText: 2  }
