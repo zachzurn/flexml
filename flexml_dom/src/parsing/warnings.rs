@@ -14,6 +14,7 @@ pub struct ParserWarning {
 
 #[derive(Debug, Clone)]
 pub enum ParserWarningKind {
+    EmptyInput,
     ExpectedStyleValue,
     UnclosedRawContainer,
     UnclosedStyleContainer,
@@ -57,6 +58,12 @@ impl<'a> Parser<'a> {
     /// - `help`: A suggestion for fixing the issue.
     pub(super) fn warn(&mut self, span: Range<usize>, kind: ParserWarningKind) {
         let (message, label, help, fix) = match kind {
+            ParserWarningKind::EmptyInput => {(
+              "Input is empty.",
+              "Provide some content",
+              "Provide some content like [ This is my text ]",
+              "[ Example Text ] [ Some more text ]"
+            )},
             ParserWarningKind::ExpectedStyleValue => {(
                 "Expected style value, but found nothing",
                 "Missing style value",

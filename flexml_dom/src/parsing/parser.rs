@@ -57,7 +57,7 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     /// Create a one time use parser for parsing flexml
     pub fn new(input: &'a str) -> Self {
-        Self {
+        let mut parser = Self {
             lexer: Token::lexer(input),
             input,
             peeked: None,
@@ -67,7 +67,13 @@ impl<'a> Parser<'a> {
             max_nodes: 10_000,
             node_guard: Guard::new(10_000),
             depth_guard: Guard::new(50),
+        };
+
+        if input.is_empty() {
+            parser.warn(0..0, EmptyInput)
         }
+
+        parser
     }
 
     pub fn with_max_depth(mut self, max_depth: usize) -> Self {
@@ -80,88 +86,6 @@ impl<'a> Parser<'a> {
         self.max_nodes = max_nodes;
         self.node_guard.limit = max_nodes;
         self
-    }
-}
-
-impl<'a> Parser<'a> {
-    /// Advances the lexer to the next valid token and returns it along with its matched input slice.
-    /// Errors are ignored but sent off as warnings
-    fn next_with_slice(&mut self) -> Option<(Token, &'a str)> {
-        while let Some(result) = self.lexer.next() {
-            return match result {
-                Ok(tok) => {
-                    let slice = self.lexer.slice();
-                    Some((tok, slice))
-                }
-                Err(()) => {
-                    let span = self.lexer.span();
-                    let slice = &self.input[span.start..span.end];
-
-                    self.warn(self.lexer.span(), UnexpectedToken);
-
-                    // Errors should not happen but if they do
-                    // we still forward it to a Text token to be
-                    // collected as text
-                    Some((Text, slice))
-                }
-            };
-        }
-        None
-    }
-
-    /// Consume the current or peeked token
-    fn take(&mut self) -> Option<(Token, &'a str)> {
-        if let Some(p) = self.peeked.take() {
-            Some(p)
-        } else {
-            self.next_with_slice()
-        }
-    }
-
-    /// Take a peek at the next token and hold onto it.
-    /// We always have to hold onto consumed tokens.
-    fn peek(&mut self) -> Option<&(Token, &'a str)> {
-        if self.peeked.is_none() {
-            self.peeked = self.next_with_slice();
-        }
-        self.peeked.as_ref()
-    }
-
-    /// Increment and check that we have not exceeded node count
-    /// Returns false if we cannot afford any more nodes
-    /// issues a single warning even on multiple guard failures
-    /// unless the guard is reset
-    fn spend_node_count(&mut self) -> bool {
-        // We have produced too many nodes if tick is true
-        if self.node_guard.tick() {
-
-            // Fire off a single warning
-            if !self.node_guard.exceeded {
-                self.node_guard.exceeded = true;
-                self.warn(self.lexer.span().start..self.input.len(), ExceededNodeCount);
-            }
-            false
-        } else {
-            true
-        }
-    }
-
-    /// Increment and check that we have not exceeded node depth
-    /// Returns true if we have exceeded the depth and also
-    /// issues a single warning even on multiple guard failures
-    /// unless the guard is reset
-    fn spend_node_depth(&mut self) -> bool {
-        if self.depth_guard.tick() {
-            // Fire off a single warning
-            if self.depth_guard.exceeded == false {
-                self.depth_guard.exceeded = true;
-                self.warn(self.lexer.span(), ExceededNodeDepth);
-            }
-
-            false
-        } else {
-            true
-        }
     }
 }
 
@@ -262,37 +186,6 @@ impl<'a> Parser<'a> {
         None
     }
 
-    // Separators can be surrounded by whitespace
-    // Sometimes we need to know if a separator was found
-    fn skip_separator(&mut self, sep: Token) -> bool {
-        self.skip_whitespace();
-        let mut found = false;
-
-        // peek for sep token and skip if found
-        if let Some((next, _)) = self.peek() {
-            if *next == sep {
-                found = true;
-                self.take();
-            }
-        }
-
-        self.skip_whitespace();
-
-        found
-    }
-
-    /// Skip all whitespace and newlines
-    fn skip_whitespace(&mut self) {
-        while let Some((tok, _)) = self.peek() {
-            match tok {
-                Whitespace | Newline => {
-                    self.take();
-                }
-                _ => break,
-            }
-        }
-    }
-
     /// Parse a contiguous text run starting with the current span
     /// This way we can include the matched token in the text run
     /// We start the span at the provided starting_span
@@ -364,7 +257,7 @@ impl<'a> Parser<'a> {
     fn parse_style_container(&mut self) -> Node<'a> {
         let start_span = self.lexer.span(); // Span at '{'
 
-        // We allow whitespace before the name
+        // We allow strictly whitespace before the name (no newlines)
         self.skip_whitespace();
 
         // Style name
@@ -514,5 +407,119 @@ impl<'a> Parser<'a> {
         }
 
         styles
+    }
+}
+
+/// Utility type fn
+impl<'a> Parser<'a> {
+    /// Advances the lexer to the next valid token and returns it along with its matched input slice.
+    /// Errors are ignored but sent off as warnings
+    fn next_with_slice(&mut self) -> Option<(Token, &'a str)> {
+        while let Some(result) = self.lexer.next() {
+            return match result {
+                Ok(tok) => {
+                    let slice = self.lexer.slice();
+                    Some((tok, slice))
+                }
+                Err(()) => {
+                    let span = self.lexer.span();
+                    let slice = &self.input[span.start..span.end];
+
+                    self.warn(self.lexer.span(), UnexpectedToken);
+
+                    // Errors should not happen but if they do
+                    // we still forward it to a Text token to be
+                    // collected as text
+                    Some((Text, slice))
+                }
+            };
+        }
+        None
+    }
+
+    /// Consume the current or peeked token
+    fn take(&mut self) -> Option<(Token, &'a str)> {
+        if let Some(p) = self.peeked.take() {
+            Some(p)
+        } else {
+            self.next_with_slice()
+        }
+    }
+
+    /// Take a peek at the next token and hold onto it.
+    /// We always have to hold onto consumed tokens.
+    fn peek(&mut self) -> Option<&(Token, &'a str)> {
+        if self.peeked.is_none() {
+            self.peeked = self.next_with_slice();
+        }
+        self.peeked.as_ref()
+    }
+
+    /// Increment and check that we have not exceeded node count
+    /// Returns false if we cannot afford any more nodes
+    /// issues a single warning even on multiple guard failures
+    /// unless the guard is reset
+    fn spend_node_count(&mut self) -> bool {
+        // We have produced too many nodes if tick is true
+        if self.node_guard.tick() {
+
+            // Fire off a single warning
+            if !self.node_guard.exceeded {
+                self.node_guard.exceeded = true;
+                self.warn(self.lexer.span().start..self.input.len(), ExceededNodeCount);
+            }
+            false
+        } else {
+            true
+        }
+    }
+
+    /// Increment and check that we have not exceeded node depth
+    /// Returns true if we have exceeded the depth and also
+    /// issues a single warning even on multiple guard failures
+    /// unless the guard is reset
+    fn spend_node_depth(&mut self) -> bool {
+        if self.depth_guard.tick() {
+            // Fire off a single warning
+            if self.depth_guard.exceeded == false {
+                self.depth_guard.exceeded = true;
+                self.warn(self.lexer.span(), ExceededNodeDepth);
+            }
+
+            false
+        } else {
+            true
+        }
+    }
+
+    // Separators can be surrounded by whitespace
+    // Sometimes we need to know if a separator was found
+    fn skip_separator(&mut self, sep: Token) -> bool {
+        self.skip_whitespace();
+        let mut found = false;
+
+        // peek for sep token and skip if found
+        if let Some((next, _)) = self.peek() {
+            if *next == sep {
+                found = true;
+                self.take();
+            }
+        }
+
+        self.skip_whitespace();
+
+        found
+    }
+
+    /// Skip all whitespace and newlines
+    fn skip_whitespace(&mut self) {
+        while let Some((tok, _)) = self.peek() {
+            match tok {
+                Whitespace | Newline => {
+                    self.take();
+                }
+                _ => break,
+            }
+        }
     }
 }

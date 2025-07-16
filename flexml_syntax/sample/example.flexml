@@ -6,16 +6,38 @@
     + fontSize: 3
 }
 
+[p
+    This is also a paragraph with some [b bold text] [ boxes in paragraphs are spans ]
+]
+
+This is a paragraph
+
+[
+    This
+    is
+    a
+    box
+]
+
+[
+    This is in a box
+    [ This is in a box ]
+    [p this is a paragraph]
+]
+
+
 [ This is some <Tag> normal text [ With some more text ] ]
 
 [bold + italic param + fontSize: 3
     [ left ] <PageNumber> [ right ]
 ]
 
+[p This is a paragraph [b with some bold text].]
+
 This is some normal text
 
 [ This is some |= raw [] [ style box ] text =| ]
 
 [
-
+  [ Another box ]-
 ]
