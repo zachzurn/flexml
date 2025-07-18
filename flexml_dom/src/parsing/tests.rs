@@ -1,5 +1,4 @@
 use std::ops::RangeInclusive;
-use std::ptr::read;
 use super::nodes::Node;
 use super::parser::{Parser, ParserWarning};
 
