@@ -106,7 +106,7 @@ impl StyleRegistry {
 
     /// Expands a list of raw style entries like "bold", "italic", "fontSize" with value "3", "customStyle"
     /// Into a list of atomic styles like fontWeight: bold, fontSize: 3.0, etc
-    fn expand_raw_styles(&mut self, entries: Vec<RawStyle>) -> Vec<AtomicStyle> {
+    pub fn expand_raw_styles(&mut self, entries: Vec<RawStyle>) -> Vec<AtomicStyle> {
         let mut atomic_set : HashSet<StyleId> = HashSet::new();
         let mut atomic_styles = vec![];
 

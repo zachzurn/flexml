@@ -1,5 +1,5 @@
-use crate::parsing::style::StyleValue::{NegativeNumber, Number, Percent, Empty, Invalid};
-use super::style::{AtomicStyle, PercentFloat, RawStyle, StyleId, StyleValue, StyleValueParser};
+use super::style::StyleValue::{NegativeNumber, Number, Percent, Empty, Invalid, Color};
+use super::style::{AtomicStyle, PercentFloat, RawStyle, StyleId, StyleValue, StyleValueParser, RGBA};
 use super::style_registry::{StyleRegistry};
 
 // Helper to get a sorted vec of atomic style entries for comparison
@@ -10,6 +10,95 @@ fn get_sorted_atomic_entries(registry: &StyleRegistry, alias_id: StyleId) -> Vec
         .clone();
     entries.sort_by_key(|e| e.id);
     entries
+}
+
+#[test]
+fn test_style_value_color_parser(){
+    let color_parser = StyleValueParser::ColorParser;
+
+    let tests = vec![
+
+        ("#00", Color(RGBA{ r: 0, g: 0, b: 0, a: 255 })),
+        ("#FF", Color(RGBA{ r: 255, g: 255, b: 255, a: 255 })),
+        ("#AB", Color(RGBA{ r: 171, g: 171, b: 171, a: 255 })),
+        ("#cc", Color(RGBA{ r: 204, g: 204, b: 204, a: 255 })), // Case-insensitivity
+
+        ("#F00", Color(RGBA{ r: 255, g: 0, b: 0, a: 255 })),
+        ("#0F0", Color(RGBA{ r: 0, g: 255, b: 0, a: 255 })),
+        ("#00F", Color(RGBA{ r: 0, g: 0, b: 255, a: 255 })),
+        ("#ABC", Color(RGBA{ r: 170, g: 187, b: 204, a: 255 })),
+        ("#fff", Color(RGBA{ r: 255, g: 255, b: 255, a: 255 })), // Case-insensitivity
+
+        ("#F008", Color(RGBA{ r: 255, g: 0, b: 0, a: 136 })), // Red with ~50% alpha
+        ("#0F04", Color(RGBA{ r: 0, g: 255, b: 0, a: 68 })),  // Green with ~25% alpha
+        ("#1234", Color(RGBA{ r: 17, g: 34, b: 51, a: 68 })),
+        ("#abcd", Color(RGBA{ r: 170, g: 187, b: 204, a: 221 })), // Case-insensitivity
+
+        ("#FF0000", Color(RGBA{ r: 255, g: 0, b: 0, a: 255 })),
+        ("#00FF00", Color(RGBA{ r: 0, g: 255, b: 0, a: 255 })),
+        ("#0000FF", Color(RGBA{ r: 0, g: 0, b: 255, a: 255 })),
+        ("#123456", Color(RGBA{ r: 18, g: 52, b: 86, a: 255 })),
+        ("#FFFFFF", Color(RGBA{ r: 255, g: 255, b: 255, a: 255 })),
+        ("#000000", Color(RGBA{ r: 0, g: 0, b: 0, a: 255 })),
+        ("#abcdef", Color(RGBA{ r: 171, g: 205, b: 239, a: 255 })), // Case-insensitivity
+
+        ("#FF000080", Color(RGBA{ r: 255, g: 0, b: 0, a: 128 })), // Red with 50% alpha
+        ("#00000000", Color(RGBA{ r: 0, g: 0, b: 0, a: 0 })),     // Fully transparent black
+        ("#000000FF", Color(RGBA{ r: 0, g: 0, b: 0, a: 255 })),   // Opaque black
+        ("#12345678", Color(RGBA{ r: 18, g: 52, b: 86, a: 120 })),
+        ("#ABCDEF01", Color(RGBA{ r: 171, g: 205, b: 239, a: 1 })),
+        ("#abcdef99", Color(RGBA{ r: 171, g: 205, b: 239, a: 153 })), // Case-insensitivity
+
+        ("  #FF0000 ", Color(RGBA{ r: 255, g: 0, b: 0, a: 255 })),
+        ("\t#F00\n", Color(RGBA{ r: 255, g: 0, b: 0, a: 255 })),
+        ("  #00000000  ", Color(RGBA{ r: 0, g: 0, b: 0, a: 0 })),
+    ];
+
+    for (input, value) in tests {
+        assert_eq!(
+            color_parser.parse(input),
+            value,
+            "Input {}", input
+        )
+    }
+
+}
+
+#[test]
+fn test_style_value_color_parser_invalid(){
+    let color_parser = StyleValueParser::ColorParser;
+
+    let error_test = vec![
+        "not_a_hex",
+        "#F",
+        "#F",
+        "#F0000",
+        "#ABCDE",
+        "#123456789",
+        "#GG",
+        "#F0G",
+        "#F00G",
+        "#A_B"
+    ];
+
+    for name in error_test {
+        let result = color_parser.parse(name);
+        match result {
+            Invalid(_,_) => {},
+            _ => panic!("Expected Invalid got {:?} from input {}", result, name)
+        }
+    }
+
+
+    let result = color_parser.parse("");
+    assert_eq!(result,Empty);
+
+    let result = color_parser.parse("  ");
+    assert_eq!(result,Empty);
+
+    let result = color_parser.parse("  \r\n");
+    assert_eq!(result,Empty);
+
 }
 
 #[test]
