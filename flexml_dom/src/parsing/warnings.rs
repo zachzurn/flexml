@@ -1,6 +1,7 @@
 use std::ops::Range;
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use crate::parsing::parser::Parser;
+use crate::strings::ParserWarnings;
 
 #[derive(Debug, Clone)]
 pub struct ParserWarning {
@@ -58,60 +59,60 @@ impl<'a> Parser<'a> {
     /// - `help`: A suggestion for fixing the issue.
     pub(super) fn warn(&mut self, span: Range<usize>, kind: ParserWarningKind) {
         let (message, label, help, fix) = match kind {
-            ParserWarningKind::EmptyInput => {(
-              "Input is empty.",
-              "Provide some content",
-              "Provide some content like [ This is my text ]",
-              "[ Example Text ] [ Some more text ]"
-            )},
-            ParserWarningKind::ExpectedStyleValue => {(
-                "Expected style value, but found nothing",
-                "Missing style value",
-                "Try removing the : or adding a value",
-                "1",
-            )},
-            ParserWarningKind::UnclosedBoxContainer => {(
-                "Unclosed box container",
-                "Box container isn't closed properly",
-                "Make sure every -> [ has a matching -> ]",
-                "]"
-            )},
-            ParserWarningKind::UnclosedStyleContainer => {(
-                "Unclosed style container",
-                "Missing closing '}'",
-                "Add '}' to close the style container",
-                "}"
-            )},
-            ParserWarningKind::UnclosedRawContainer => {(
-                "Unterminated raw container",
-                "Raw ended here with no closing tag",
-                "Try adding =| to close the raw container",
-                "=|"
-            )},
-            ParserWarningKind::StyleContainerNoStyles => {(
-                "Style definition has no styles",
-                "Missing styles",
-                "Add some styles like bold+italic",
-                " bold+italic"
-            )},
-            ParserWarningKind::ExceededNodeCount => {(
-                "Parser stopped due to max nodes exceeded",
-                "Maximum nodes exceeded here. Everything after this was not parsed.",
-                "Increase the max nodes limit",
-                ""
-            )},
-            ParserWarningKind::ExceededNodeDepth => {(
-                "Maximum nodes depth exceeded",
-                "Some nodes were ignored",
-                "Increase the node depth limit",
-                ""
-            )},
-            ParserWarningKind::UnexpectedToken => {(
-                "There was an error while parsing a token",
-                "Unexpected text",
-                "This should not be a problem but please file an issue",
-                ""
-            )}
+            ParserWarningKind::EmptyInput => (
+                ParserWarnings::MSG_EMPTY_INPUT,
+                ParserWarnings::LABEL_EMPTY_INPUT,
+                ParserWarnings::HELP_EMPTY_INPUT,
+                ParserWarnings::FIX_EMPTY_INPUT,
+            ),
+            ParserWarningKind::ExpectedStyleValue => (
+                ParserWarnings::MSG_EXPECTED_STYLE_VALUE,
+                ParserWarnings::LABEL_EXPECTED_STYLE_VALUE,
+                ParserWarnings::HELP_EXPECTED_STYLE_VALUE,
+                ParserWarnings::FIX_EXPECTED_STYLE_VALUE,
+            ),
+            ParserWarningKind::UnclosedBoxContainer => (
+                ParserWarnings::MSG_UNCLOSED_BOX_CONTAINER,
+                ParserWarnings::LABEL_UNCLOSED_BOX_CONTAINER,
+                ParserWarnings::HELP_UNCLOSED_BOX_CONTAINER,
+                ParserWarnings::FIX_UNCLOSED_BOX_CONTAINER,
+            ),
+            ParserWarningKind::UnclosedStyleContainer => (
+                ParserWarnings::MSG_UNCLOSED_STYLE_CONTAINER,
+                ParserWarnings::LABEL_UNCLOSED_STYLE_CONTAINER,
+                ParserWarnings::HELP_UNCLOSED_STYLE_CONTAINER,
+                ParserWarnings::FIX_UNCLOSED_STYLE_CONTAINER,
+            ),
+            ParserWarningKind::UnclosedRawContainer => (
+                ParserWarnings::MSG_UNCLOSED_RAW_CONTAINER,
+                ParserWarnings::LABEL_UNCLOSED_RAW_CONTAINER,
+                ParserWarnings::HELP_UNCLOSED_RAW_CONTAINER,
+                ParserWarnings::FIX_UNCLOSED_RAW_CONTAINER,
+            ),
+            ParserWarningKind::StyleContainerNoStyles => (
+                ParserWarnings::MSG_STYLE_CONTAINER_NO_STYLES,
+                ParserWarnings::LABEL_STYLE_CONTAINER_NO_STYLES,
+                ParserWarnings::HELP_STYLE_CONTAINER_NO_STYLES,
+                ParserWarnings::FIX_STYLE_CONTAINER_NO_STYLES,
+            ),
+            ParserWarningKind::ExceededNodeCount => (
+                ParserWarnings::MSG_EXCEEDED_NODE_COUNT,
+                ParserWarnings::LABEL_EXCEEDED_NODE_COUNT,
+                ParserWarnings::HELP_EXCEEDED_NODE_COUNT,
+                ParserWarnings::FIX_EXCEEDED_NODE_COUNT,
+            ),
+            ParserWarningKind::ExceededNodeDepth => (
+                ParserWarnings::MSG_EXCEEDED_NODE_DEPTH,
+                ParserWarnings::LABEL_EXCEEDED_NODE_DEPTH,
+                ParserWarnings::HELP_EXCEEDED_NODE_DEPTH,
+                ParserWarnings::FIX_EXCEEDED_NODE_DEPTH,
+            ),
+            ParserWarningKind::UnexpectedToken => (
+                ParserWarnings::MSG_UNEXPECTED_TOKEN,
+                ParserWarnings::LABEL_UNEXPECTED_TOKEN,
+                ParserWarnings::HELP_UNEXPECTED_TOKEN,
+                ParserWarnings::FIX_UNEXPECTED_TOKEN,
+            ),
         };
 
         let fix = if fix.is_empty() { None } else { Some(fix.to_string()) };
