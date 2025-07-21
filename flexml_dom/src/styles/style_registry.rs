@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
-use super::style::{AtomicStyle, RawStyle, StyleId, StyleValue, StyleValueParser};
+use crate::styles::builtin::{BuiltInStyle, DEFAULT_BUILTINS};
+use super::style::{AtomicStyle, RawStyle, StyleId, StyleValue};
 
 /// Style Registry is the central place
 /// to register atomic styles (Things like fontSize, fontWeight, etc)
@@ -11,28 +12,45 @@ pub struct StyleRegistry {
     names: Vec<String>,
     names_map: HashMap<String, StyleId>,
     definitions: HashMap<StyleId, Vec<AtomicStyle>>,
-    last_atomic_style: usize,
-    atomic_styles_locked: bool,
-    atomic_parsers: Vec<StyleValueParser>
+    first_style: usize,
+    first_custom_style: usize,
+    builtins_registered: bool,
+    builtins: Vec<&'static BuiltInStyle>,
 }
 
 pub struct RegisteredStyle {
+    /// The style id for the registered style
     pub(crate) style_id: StyleId,
+
+    /// Whether the style was an atomic style
     pub(crate) atomic: bool,
+
+    /// Whether we overwrote an existing style.
+    /// Will always be false for atomic styles.
     pub(crate) overwrote: bool,
+
+    /// Is the style a builtin style
+    pub(crate) builtin: bool,
 }
 
 impl StyleRegistry {
 
-    pub fn new() -> StyleRegistry {
+    fn new() -> StyleRegistry {
         StyleRegistry {
             names: vec![],
             names_map: HashMap::new(),
             definitions: HashMap::new(),
-            atomic_parsers: Vec::new(),
-            last_atomic_style: 0,
-            atomic_styles_locked: false,
+            builtins: Vec::new(),
+            first_style: 0,
+            first_custom_style: 0,
+            builtins_registered: false,
         }
+    }
+
+    pub fn with_builtins() -> StyleRegistry {
+        let mut registry = Self::new();
+        registry.register_builtins(DEFAULT_BUILTINS);
+        registry
     }
 
     /// Interns a string name and returns its StyleId.
@@ -52,22 +70,50 @@ impl StyleRegistry {
         self.names.get(id).map(|s| s.as_str())
     }
 
-    /// Must be called only *before* any regular styles are registered.
-    /// Registers an atomic style (a base style like "fontSize") which has no definition
-    /// but which is a style on its own
-    pub fn register_atomic_style(&mut self, name: &str, parser: StyleValueParser) -> Result<StyleId, String> {
-        if self.atomic_styles_locked {
-            return Err(format!("Cannot register atomic style '{}': Regular styles have already been registered.", name));
+    /// Call this once to register built in atomic styles along with their
+    /// defined styles (like "bold" for fontWeight: "bold" or an alias with a Forward)
+    fn register_builtins(&mut self, builtins: &[&'static BuiltInStyle]) {
+        let mut styles = vec![];
+
+        //Register atomics
+        // These are fundamental style entries that
+        // cannot be overwritten
+        for builtin in builtins {
+            let atomic_style_id = self.intern_name(builtin.name);
+            self.builtins.push(builtin);
+
+            for (style_name, style_value) in builtin.styles.iter() {
+                styles.push((atomic_style_id, style_name, style_value));
+            }
         }
 
-        if self.names_map.contains_key(name) {
-            return Err(format!("Atomic style '{}' is already defined.", name));
+        self.builtins_registered = true;
+        self.first_style = builtins.len();
+
+        // Register styles
+        // These are things like "bold" which alias to the atomic style fontWeight
+        for (atomic_style_id, style_name, style_value) in styles {
+            let style_id = self.intern_name(style_name);
+
+            // Prevent overwriting atomics
+            if style_id < self.first_style {
+                continue;
+            }
+
+            // Forward style values need to point to the atomic_style_value
+            // Instead of 0, which is a temporary style_id
+            let style_value_forwarded = match style_value {
+                // forward to the atomic style's styleId
+                StyleValue::Forward(_) => StyleValue::Forward(atomic_style_id),
+                _ => style_value.clone(),
+            };
+
+            // Directly insert the defined style into the definitions
+            self.definitions.insert(style_id, vec![AtomicStyle{ id: atomic_style_id, value: style_value_forwarded }]);
         }
 
-        self.last_atomic_style += 1;
-
-        self.atomic_parsers.push(parser);
-        Ok(self.intern_name(name))
+        // The next style registered after this is the first custom style
+        self.first_custom_style = self.names.len()
     }
 
     /// Registers or updates a style definition. This always returns a StyleId
@@ -76,37 +122,44 @@ impl StyleRegistry {
     /// Calling this will also lock atomic style registration
     ///
     /// This way we never overwrite built in atomic styles but return the atomic.
-    pub fn register_style(&mut self, style_name: &str, entries: Vec<RawStyle>) -> RegisteredStyle {
+    pub fn register_style(&mut self, style_name: &str, entries: Vec<AtomicStyle>) -> RegisteredStyle {
         // First style definition locks atomics
-        if !self.atomic_styles_locked {
-            if self.last_atomic_style == 0 { panic!("Trying to define a style with no atomic styles"); }
-            self.atomic_styles_locked = true;
-            self.last_atomic_style -= 1;
+        if !self.builtins_registered {
+            if self.first_style == 0 { panic!("Trying to define a style with no atomic styles"); }
+            self.builtins_registered = true;
+            self.first_style -= 1;
         }
 
         let style_id = self.intern_name(style_name);
 
         // This is an atomic style, cannot be overwritten, we return as such
-        if style_id <= self.last_atomic_style {
-            return RegisteredStyle { style_id, atomic: true, overwrote: false };
+        if style_id < self.first_style {
+            return RegisteredStyle { style_id, atomic: true, overwrote: false, builtin: true };
         }
 
         // This is a custom style, turn into expanded atomic styles
-        let style_entries = self.expand_raw_styles(entries);
+        //let style_entries = self.expand_raw_styles(entries);
 
         // We add or overwrite the style
-        let overwrote = self.definitions.insert(style_id, style_entries).is_some();
+        let overwrote = self.definitions.insert(style_id, entries).is_some();
+        let builtin = style_id < self.first_custom_style;
 
         RegisteredStyle {
             style_id,
             atomic: false,
-            overwrote
+            overwrote,
+            builtin,
         }
+    }
+
+    pub fn register_raw_style(&mut self, style_name: &str, entries: Vec<RawStyle>) -> RegisteredStyle {
+        let atomics = self.expand_raw_styles(&entries);
+        self.register_style(style_name, atomics)
     }
 
     /// Expands a list of raw style entries like "bold", "italic", "fontSize" with value "3", "customStyle"
     /// Into a list of atomic styles like fontWeight: bold, fontSize: 3.0, etc
-    pub fn expand_raw_styles(&mut self, entries: Vec<RawStyle>) -> Vec<AtomicStyle> {
+    pub fn expand_raw_styles(&mut self, entries: &Vec<RawStyle>) -> Vec<AtomicStyle> {
         let mut atomic_set : HashSet<StyleId> = HashSet::new();
         let mut atomic_styles = vec![];
 
@@ -117,9 +170,9 @@ impl StyleRegistry {
         entries.into_iter().rev().for_each(|raw| {
             let id = self.intern_name(raw.name);
 
-            if id <= self.last_atomic_style {
+            if id <= self.first_style {
                 // Atomic style, we parse and add
-                let parser = &self.atomic_parsers[id];
+                let parser = &self.builtins[id].parser;
 
                 // Insert if it hasn't already been defined
                 if !atomic_set.contains(&id) {

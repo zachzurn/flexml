@@ -1,9 +1,11 @@
-use super::nodes::{Node, Style};
+use super::nodes::{Node};
 use super::tokens::Token;
 use super::tokens::Token::*;
 pub(crate) use crate::parsing::warnings::ParserWarning;
 use crate::parsing::warnings::ParserWarningKind::*;
 use logos::{Lexer, Logos, Span};
+use crate::styles::style::{AtomicStyle, RawStyle};
+use crate::styles::style_registry::StyleRegistry;
 
 struct Guard {
     limit: usize,
@@ -32,6 +34,7 @@ impl Guard {
 }
 
 pub struct Parser<'a> {
+    style_registry: StyleRegistry,
     lexer: Lexer<'a, Token>,
     pub(super) input: &'a str,
     peeked: Option<(Token, &'a str)>,
@@ -58,6 +61,7 @@ impl<'a> Parser<'a> {
     /// Create a one time use parser for parsing flexml
     pub fn new(input: &'a str) -> Self {
         let mut parser = Self {
+            style_registry: StyleRegistry::with_builtins(),
             lexer: Token::lexer(input),
             input,
             peeked: None,
@@ -292,7 +296,19 @@ impl<'a> Parser<'a> {
             _ => self.warn(self.lexer.span(), UnclosedStyleContainer),
         }
 
-        Node::StyleDefinition { name, styles }
+        let registered = self.style_registry.register_style(name, styles);
+
+        if registered.atomic {
+            // Tried to register a style for an atomic style definition
+            self.warn(start_span.start..start_span.end, AtomicStyleDefinition);
+        }
+
+        if registered.overwrote && !registered.builtin {
+            // Overwrote an already defined style (overwriting builtins is not a warning)
+            self.warn(start_span.start..start_span.end, OverwroteStyleDefinition);
+        }
+
+        Node::StyleDefinition(registered.style_id)
     }
 
     /// Skip contents of a box container
@@ -371,7 +387,7 @@ impl<'a> Parser<'a> {
     /// Styles always start with a named with alternating separators
     /// Styles always end on a named and consume any trailing whitespace
     /// or newlines
-    fn parse_styles(&mut self) -> Vec<Style<'a>> {
+    fn parse_styles(&mut self) -> Vec<AtomicStyle> {
         let mut styles = Vec::new();
 
         while let Some((tok, _)) = self.peek() {
@@ -389,7 +405,7 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    styles.push(Style { name, value });
+                    styles.push(RawStyle { name, value });
 
                     if !self.skip_separator(StyleSeparator) {
                         break;
@@ -402,7 +418,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        styles
+        self.style_registry.expand_raw_styles(&styles)
     }
 }
 

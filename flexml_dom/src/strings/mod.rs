@@ -45,6 +45,8 @@ impl ParserWarnings {
         pub const MSG_EXCEEDED_NODE_COUNT: &'static str = "Parser stopped due to max nodes exceeded";
         pub const MSG_EXCEEDED_NODE_DEPTH: &'static str = "Maximum nodes depth exceeded";
         pub const MSG_UNEXPECTED_TOKEN: &'static str = "There was an error while parsing a token";
+        pub const MSG_OVERWROTE_USER_STYLE: &'static str = "You are overwriting a defined style here";
+        pub const MSG_ATOMIC_STYLE: &'static str = "Attempting to define a custom style for a built-in style";
 
         // Labels
         pub const LABEL_EMPTY_INPUT: &'static str = "Provide some content";
@@ -56,6 +58,8 @@ impl ParserWarnings {
         pub const LABEL_EXCEEDED_NODE_COUNT: &'static str = "Maximum nodes exceeded here. Everything after this was not parsed.";
         pub const LABEL_EXCEEDED_NODE_DEPTH: &'static str = "Some nodes were ignored";
         pub const LABEL_UNEXPECTED_TOKEN: &'static str = "Unexpected text";
+        pub const LABEL_OVERWROTE_USER_STYLE: &'static str = "This style definition was defined earlier";
+        pub const LABEL_ATOMIC_STYLE: &'static str = "Built in style name is being used";
 
         // Help
         pub const HELP_EMPTY_INPUT: &'static str = "Provide some content like [ This is my text ]";
@@ -67,6 +71,8 @@ impl ParserWarnings {
         pub const HELP_EXCEEDED_NODE_COUNT: &'static str = "Increase the max nodes limit";
         pub const HELP_EXCEEDED_NODE_DEPTH: &'static str = "Increase the node depth limit";
         pub const HELP_UNEXPECTED_TOKEN: &'static str = "This should not be a problem but please file an issue";
+        pub const HELP_OVERWROTE_USER_STYLE: &'static str = "Try renaming this style or the earlier one";
+        pub const HELP_ATOMIC_STYLE: &'static str = "Try renaming this style (You can also use a different letter casing)";
 
         // Fixes
         pub const FIX_EMPTY_INPUT: &'static str = "[ Example Text ] [ Some more text ]";
@@ -75,7 +81,5 @@ impl ParserWarnings {
         pub const FIX_UNCLOSED_STYLE_CONTAINER: &'static str = "}";
         pub const FIX_UNCLOSED_RAW_CONTAINER: &'static str = "=|";
         pub const FIX_STYLE_CONTAINER_NO_STYLES: &'static str = " bold+italic";
-        pub const FIX_EXCEEDED_NODE_COUNT: &'static str = "";
-        pub const FIX_EXCEEDED_NODE_DEPTH: &'static str = "";
-        pub const FIX_UNEXPECTED_TOKEN: &'static str = "";
+        pub const FIX_NONE: &'static str = "";
 }

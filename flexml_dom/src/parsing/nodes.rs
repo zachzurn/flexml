@@ -1,8 +1,4 @@
-#[derive(Debug, PartialEq)]
-pub struct Style<'a> {
-    pub name: &'a str,
-    pub value: Option<&'a str>,
-}
+use crate::styles::style::{AtomicStyle, StyleId};
 
 /// All Flexml node types
 #[derive(Debug, PartialEq)]
@@ -19,14 +15,11 @@ pub enum Node<'a> {
     },
 
     // Define styles
-    StyleDefinition {
-        name: &'a str,
-        styles: Vec<Style<'a>>,
-    },
+    StyleDefinition(StyleId),
 
     // Box with children
     BoxContainer {
-        styles: Vec<Style<'a>>,
+        styles: Vec<AtomicStyle>,
         children: Vec<Node<'a>>,
     },
 }

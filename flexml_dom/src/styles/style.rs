@@ -1,4 +1,3 @@
-use ariadne::IndexType::Char;
 use lazy_static::lazy_static;
 use url::Url;
 use crate::strings::{Chars, ValueErrors, ValueHelp};
@@ -9,6 +8,20 @@ pub struct RGBA {
     pub(crate) g: u8,
     pub(crate) b: u8,
     pub(crate) a: u8
+}
+
+impl RGBA {
+    pub fn green() -> Self {
+        Self{ r: 0, g: 255, b: 0, a: 255 }
+    }
+
+    pub fn blue() -> Self {
+        Self{ r: 0, g: 0, b: 255, a: 255 }
+    }
+
+    pub fn red() -> Self {
+        Self{ r: 255, g: 0, b: 0, a: 255 }
+    }
 }
 
 
@@ -28,10 +41,6 @@ impl PercentFloat {
             PercentFloat(0.0)
         }
     }
-
-    pub fn get(self) -> f32 {
-        self.0
-    }
 }
 
 pub enum StyleValueParser {
@@ -47,6 +56,7 @@ pub enum StyleValueParser {
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum StyleValue {
+    Forward(StyleId),
     Number(u16),
     NegativeNumber(u16),
     Percent(PercentFloat),
@@ -126,7 +136,7 @@ impl StyleValueParser {
     fn parse_percent(s: &str) -> StyleValue {
         return if let Ok(float) = s.parse::<f32>() {
             if float < 0.0 {
-                return StyleValue::Invalid(ValueErrors::PERCENT, ValueHelp::PERCENT);
+                return StyleValue::Invalid(ValueErrors::NEGATIVE_PERCENT, ValueHelp::PERCENT);
             }
             StyleValue::Percent(PercentFloat(float))
         } else {

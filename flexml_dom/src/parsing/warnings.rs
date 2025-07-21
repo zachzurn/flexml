@@ -24,6 +24,8 @@ pub enum ParserWarningKind {
     ExceededNodeCount,
     StyleContainerNoStyles,
     UnexpectedToken,
+    OverwroteStyleDefinition,
+    AtomicStyleDefinition
 }
 
 impl<'a> Parser<'a> {
@@ -99,19 +101,31 @@ impl<'a> Parser<'a> {
                 ParserWarnings::MSG_EXCEEDED_NODE_COUNT,
                 ParserWarnings::LABEL_EXCEEDED_NODE_COUNT,
                 ParserWarnings::HELP_EXCEEDED_NODE_COUNT,
-                ParserWarnings::FIX_EXCEEDED_NODE_COUNT,
+                ParserWarnings::FIX_NONE,
             ),
             ParserWarningKind::ExceededNodeDepth => (
                 ParserWarnings::MSG_EXCEEDED_NODE_DEPTH,
                 ParserWarnings::LABEL_EXCEEDED_NODE_DEPTH,
                 ParserWarnings::HELP_EXCEEDED_NODE_DEPTH,
-                ParserWarnings::FIX_EXCEEDED_NODE_DEPTH,
+                ParserWarnings::FIX_NONE,
             ),
             ParserWarningKind::UnexpectedToken => (
                 ParserWarnings::MSG_UNEXPECTED_TOKEN,
                 ParserWarnings::LABEL_UNEXPECTED_TOKEN,
                 ParserWarnings::HELP_UNEXPECTED_TOKEN,
-                ParserWarnings::FIX_UNEXPECTED_TOKEN,
+                ParserWarnings::FIX_NONE,
+            ),
+            ParserWarningKind::OverwroteStyleDefinition => (
+                ParserWarnings::MSG_OVERWROTE_USER_STYLE,
+                ParserWarnings::LABEL_OVERWROTE_USER_STYLE,
+                ParserWarnings::HELP_OVERWROTE_USER_STYLE,
+                ParserWarnings::FIX_NONE,
+            ),
+            ParserWarningKind::AtomicStyleDefinition => (
+                ParserWarnings::MSG_ATOMIC_STYLE,
+                ParserWarnings::LABEL_ATOMIC_STYLE,
+                ParserWarnings::HELP_ATOMIC_STYLE,
+                ParserWarnings::FIX_NONE,
             ),
         };
 
