@@ -29,6 +29,7 @@ pub struct Chars;
 impl Chars {
     pub const PERCENT: &'static str = "%";
     pub const HEX: &'static str = "#";
+    pub const FORWARD: &'static str = ">";
 }
 
 

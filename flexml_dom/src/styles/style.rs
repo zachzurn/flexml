@@ -56,7 +56,9 @@ pub enum StyleValueParser {
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum StyleValue {
-    Forward(StyleId),
+    /// Forward is a special style value
+    /// only used in built ins as a proxy for Empty
+    Forward,
     Number(u16),
     NegativeNumber(u16),
     Percent(PercentFloat),
@@ -122,10 +124,7 @@ impl StyleValueParser {
     }
 
     fn parse_float(s: &str) -> StyleValue {
-
-        let trimmed = s.trim();
-
-        if let Ok(float) = trimmed.parse::<f32>() {
+        if let Ok(float) = s.parse::<f32>() {
             StyleValue::Float(float)
         } else {
             StyleValue::Invalid(ValueErrors::FLOAT, ValueHelp::FLOAT)
@@ -146,10 +145,8 @@ impl StyleValueParser {
 
     // Parses a whole number
     fn parse_number(s: &str) -> StyleValue {
-
-        let trimmed = s.trim();
-        let negative = trimmed.starts_with('-');
-        let number = trimmed.trim_start_matches('-');
+        let negative = s.starts_with('-');
+        let number = s.trim_start_matches('-');
 
         if number.ends_with(Chars::PERCENT) {
             return Self::parse_percent(number.trim_end_matches(Chars::PERCENT));
@@ -215,17 +212,15 @@ impl StyleValueParser {
     }
 
     fn parse_color(s: &str) -> StyleValue {
-        let trimmed = s.trim();
+        if s.is_empty() { return StyleValue::Empty }
 
-        if trimmed.is_empty() { return StyleValue::Empty }
-
-        let has_hex_prefix = trimmed.starts_with(Chars::HEX);
+        let has_hex_prefix = s.starts_with(Chars::HEX);
 
         if !has_hex_prefix {
             return StyleValue::Invalid(ValueErrors::COLOR, ValueHelp::COLOR);
         }
 
-        if let Some((r,g,b,a)) = Self::parse_hex_string(&trimmed[1..]){
+        if let Some((r,g,b,a)) = Self::parse_hex_string(&s[1..]){
             StyleValue::Color(RGBA { r, g, b, a })
         } else {
             StyleValue::Invalid(ValueErrors::COLOR, ValueHelp::COLOR)

@@ -4,7 +4,7 @@ use super::tokens::Token::*;
 pub(crate) use crate::parsing::warnings::ParserWarning;
 use crate::parsing::warnings::ParserWarningKind::*;
 use logos::{Lexer, Logos, Span};
-use crate::styles::style::{AtomicStyle, RawStyle};
+use crate::styles::style::{AtomicStyle, RawStyle, StyleId};
 use crate::styles::style_registry::StyleRegistry;
 
 struct Guard {
@@ -281,7 +281,7 @@ impl<'a> Parser<'a> {
         // mainly used for multiline styling
         self.skip_separator(StyleSeparator);
 
-        let styles = self.parse_styles();
+        let (styles, forwarders) = self.parse_styles();
 
         if styles.is_empty() {
             self.warn(self.lexer.span(), StyleContainerNoStyles)
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
             _ => self.warn(self.lexer.span(), UnclosedStyleContainer),
         }
 
-        let registered = self.style_registry.register_style(name, styles);
+        let registered = self.style_registry.register_style(name, styles, forwarders);
 
         if registered.atomic {
             // Tried to register a style for an atomic style definition
@@ -343,7 +343,9 @@ impl<'a> Parser<'a> {
     /// Box containers always have whitespace or newlines to start the children
     /// content parsing
     fn parse_box_container(&mut self) -> Node<'a> {
-        let styles = self.parse_styles();
+        // We ignore forwarders on inline styles
+        // Forwarders only apply to style definitions
+        let (styles, _forwarders) = self.parse_styles();
         let mut children = Vec::new();
         let mut close_found = false;
 
@@ -387,7 +389,7 @@ impl<'a> Parser<'a> {
     /// Styles always start with a named with alternating separators
     /// Styles always end on a named and consume any trailing whitespace
     /// or newlines
-    fn parse_styles(&mut self) -> Vec<AtomicStyle> {
+    fn parse_styles(&mut self) -> (Vec<AtomicStyle>, Vec<StyleId>) {
         let mut styles = Vec::new();
 
         while let Some((tok, _)) = self.peek() {
@@ -398,7 +400,7 @@ impl<'a> Parser<'a> {
 
                     if self.skip_separator(StyleParamSeparator) {
                         if let Some((Named, arg_val)) = self.peek() {
-                            value = Some(*arg_val);
+                            value = Some(arg_val.trim());
                             self.take();
                         } else {
                             self.warn(self.lexer.span(), ExpectedStyleValue);

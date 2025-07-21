@@ -49,10 +49,6 @@ fn test_style_value_color_parser(){
         ("#12345678", Color(RGBA{ r: 18, g: 52, b: 86, a: 120 })),
         ("#ABCDEF01", Color(RGBA{ r: 171, g: 205, b: 239, a: 1 })),
         ("#abcdef99", Color(RGBA{ r: 171, g: 205, b: 239, a: 153 })), // Case-insensitivity
-
-        ("  #FF0000 ", Color(RGBA{ r: 255, g: 0, b: 0, a: 255 })),
-        ("\t#F00\n", Color(RGBA{ r: 255, g: 0, b: 0, a: 255 })),
-        ("  #00000000  ", Color(RGBA{ r: 0, g: 0, b: 0, a: 0 })),
     ];
 
     for (input, value) in tests {
@@ -90,16 +86,6 @@ fn test_style_value_color_parser_invalid(){
         }
     }
 
-
-    let result = color_parser.parse("");
-    assert_eq!(result,Empty);
-
-    let result = color_parser.parse("  ");
-    assert_eq!(result,Empty);
-
-    let result = color_parser.parse("  \r\n");
-    assert_eq!(result,Empty);
-
 }
 
 #[test]
@@ -122,8 +108,6 @@ fn test_style_value_number_parser(){
         ("235em", Number(235)),
         ("0em", Number(0)),
         ("-90.45", NegativeNumber(90)),
-        ("   23", Number(23)),
-        (" \r\n 10% ", Percent(PercentFloat::new(10.0f32))),
     ];
 
     for (name, value) in tests {
@@ -156,17 +140,6 @@ fn test_style_value_number_parser_invalid(){
             _ => panic!("Expected Invalid StyleValue got {:?} from input {}", result, name)
         }
     }
-
-
-    let result = number_parser.parse("");
-    assert_eq!(result,Empty);
-
-    let result = number_parser.parse("  ");
-    assert_eq!(result,Empty);
-
-    let result = number_parser.parse("  \r\n");
-    assert_eq!(result,Empty);
-
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use crate::styles::builtin::BuiltInStyle;
 use crate::styles::style::StyleValue;
-use crate::styles::style::StyleValue::Forward;
+use crate::styles::style::StyleValue::{Forward};
 use crate::styles::style::StyleValueParser::{ColorParser, FontParser, MatchParser, PositiveNumberParser};
 
 fn apply_text_color(_: &StyleValue) {
@@ -10,7 +10,7 @@ fn apply_text_color(_: &StyleValue) {
 pub static TEXT_COLOR: BuiltInStyle = BuiltInStyle {
     name: "color",
     parser: ColorParser,
-    styles: &[ ("textColor", Forward(0)) ],
+    styles: &[ ("textColor", Forward) ],
     apply_style: apply_text_color,
 };
 
@@ -23,8 +23,8 @@ pub static TEXT_FONT: BuiltInStyle = BuiltInStyle {
     name: "fontFamily",
     parser: FontParser,
     styles: &[
-        ("font", Forward(0)),
-        ("textFont", Forward(0))
+        ("font", Forward),
+        ("textFont", Forward)
     ],
     apply_style: apply_text_font,
 };
@@ -37,7 +37,7 @@ fn apply_text_size(_: &StyleValue) {
 pub static TEXT_SIZE: BuiltInStyle = BuiltInStyle {
     name: "fontSize",
     parser: PositiveNumberParser,
-    styles: &[ ("textSize", Forward(0)) ],
+    styles: &[ ("textSize", Forward) ],
     apply_style: apply_text_size,
 };
 
@@ -50,8 +50,8 @@ pub static TEXT_STYLE: BuiltInStyle = BuiltInStyle {
     name: "fontStyle",
     parser: MatchParser(&["normal", "italic", "oblique"]),
     styles: &[
-        ("textStyle", Forward(0)),
-        ("style", Forward(0)),
+        ("textStyle", Forward),
+        ("style", Forward),
         ("italic", StyleValue::Match(1)),
     ],
     apply_style: apply_text_style,
@@ -81,8 +81,8 @@ pub static TEXT_WEIGHT: BuiltInStyle = BuiltInStyle {
         "900"
     ]),
     styles: &[
-        ("fontWeight", Forward(0)),
-        ("textWeight", Forward(0)),
+        ("fontWeight", Forward),
+        ("textWeight", Forward),
         ("normal", StyleValue::Match(0)),
         ("bold", StyleValue::Match(1)),
         ("light", StyleValue::Match(2)),
@@ -98,7 +98,7 @@ fn apply_text_letter_spacing(_: &StyleValue) {
 pub static TEXT_LETTER_SPACING: BuiltInStyle = BuiltInStyle {
     name: "letterSpacing",
     parser: PositiveNumberParser,
-    styles: &[ ("textLetterSpacing", Forward(0)) ],
+    styles: &[ ("textLetterSpacing", Forward) ],
     apply_style: apply_text_letter_spacing,
 };
 
@@ -110,7 +110,7 @@ fn apply_text_word_spacing(_: &StyleValue) {
 pub static TEXT_WORD_SPACING: BuiltInStyle = BuiltInStyle {
     name: "wordSpacing",
     parser: PositiveNumberParser,
-    styles: &[ ("textWordSpacing", Forward(0)) ],
+    styles: &[ ("textWordSpacing", Forward) ],
     apply_style: apply_text_word_spacing,
 };
 
@@ -122,7 +122,7 @@ fn apply_text_line_height(_: &StyleValue) {
 pub static TEXT_LINE_HEIGHT: BuiltInStyle = BuiltInStyle {
     name: "lineHeight",
     parser: PositiveNumberParser,
-    styles: &[ ("textLineHeight", Forward(0)) ],
+    styles: &[ ("textLineHeight", Forward) ],
     apply_style: apply_text_line_height,
 };
 
