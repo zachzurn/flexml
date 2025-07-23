@@ -1,15 +1,14 @@
-use crate::parsing::parser::Parser;
+use crate::document::document::FlexmlDocument;
 
-pub mod parsing;
 mod styles;
 mod strings;
+mod layout;
+mod document;
 
 fn main() {
     let input = "[bold+italic this is some text \r\n and some more on a new line ]";
 
-    let mut parser = Parser::new(input);
-
-    while let Some(node) = parser.parse_next() {
-        println!("{:#?}", node);
-    }
+    let document = FlexmlDocument::new(input)
+        .with_page_size(1920, 1080)
+        .parse();
 }

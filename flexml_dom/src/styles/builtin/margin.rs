@@ -1,9 +1,13 @@
-use crate::styles::builtin::BuiltInStyle;
+use crate::layout::context::StyleContext;
+use crate::styles::builtin::{apply_dimension, BuiltInStyle};
 use crate::styles::style::StyleValue;
 use crate::styles::style::StyleValueParser::NumberParser;
 
-fn apply_margin(_: &StyleValue) {
-    todo!()
+fn apply_margin(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.margin_top);
+    apply_dimension(value, &mut context.margin_bottom);
+    apply_dimension(value, &mut context.margin_left);
+    apply_dimension(value, &mut context.margin_right);
 }
 
 pub static MARGIN: BuiltInStyle = BuiltInStyle {
@@ -13,8 +17,8 @@ pub static MARGIN: BuiltInStyle = BuiltInStyle {
     apply_style: apply_margin,
 };
 
-fn apply_margin_top(_: &StyleValue) {
-    todo!()
+fn apply_margin_top(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.margin_top);
 }
 
 pub static MARGIN_TOP: BuiltInStyle = BuiltInStyle {
@@ -24,8 +28,8 @@ pub static MARGIN_TOP: BuiltInStyle = BuiltInStyle {
     apply_style: apply_margin_top,
 };
 
-fn apply_margin_right(_: &StyleValue) {
-    todo!()
+fn apply_margin_right(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.margin_right);
 }
 
 pub static MARGIN_RIGHT: BuiltInStyle = BuiltInStyle {
@@ -35,8 +39,8 @@ pub static MARGIN_RIGHT: BuiltInStyle = BuiltInStyle {
     apply_style: apply_margin_right,
 };
 
-fn apply_margin_bottom(_: &StyleValue) {
-    todo!()
+fn apply_margin_bottom(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.margin_bottom);
 }
 
 pub static MARGIN_BOTTOM: BuiltInStyle = BuiltInStyle {
@@ -46,8 +50,8 @@ pub static MARGIN_BOTTOM: BuiltInStyle = BuiltInStyle {
     apply_style: apply_margin_bottom,
 };
 
-fn apply_margin_left(_: &StyleValue) {
-    todo!()
+fn apply_margin_left(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.margin_left);
 }
 
 pub static MARGIN_LEFT: BuiltInStyle = BuiltInStyle {

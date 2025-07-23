@@ -1,10 +1,18 @@
-use crate::styles::builtin::BuiltInStyle;
+use crate::layout::context::{AlignContent, AlignItems, AlignSelf, FlexDirection, FlexWrap, JustifyContent, Length, StyleContext};
+use crate::styles::builtin::{apply_dimension, apply_float, apply_length, apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue};
 use crate::styles::style::StyleValueParser::{FloatParser, MatchOrFloatParser, MatchParser, NumberParser};
 
 
-fn apply_align_content(_: &StyleValue) {
-    todo!()
+fn apply_align_content(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.align_content, &[
+        AlignContent::FlexStart,
+        AlignContent::FlexEnd,
+        AlignContent::Center,
+        AlignContent::SpaceBetween,
+        AlignContent::SpaceAround,
+        AlignContent::Stretch,
+    ])
 }
 
 pub static ALIGN_CONTENT: BuiltInStyle = BuiltInStyle {
@@ -27,8 +35,13 @@ pub static ALIGN_CONTENT: BuiltInStyle = BuiltInStyle {
 
 
 
-fn apply_flex_direction(_: &StyleValue) {
-    todo!()
+fn apply_flex_direction(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.flex_direction, &[
+        FlexDirection::Row,
+        FlexDirection::RowReverse,
+        FlexDirection::Column,
+        FlexDirection::ColumnReverse,
+    ])
 }
 
 pub static FLEX_DIRECTION: BuiltInStyle = BuiltInStyle {
@@ -44,8 +57,11 @@ pub static FLEX_DIRECTION: BuiltInStyle = BuiltInStyle {
 
 
 
-fn apply_flex_basis(_: &StyleValue) {
-    todo!()
+fn apply_flex_basis(value: &StyleValue, context: &mut StyleContext) {
+    apply_length(value, &mut context.flex_basis, &[
+        Length::Auto,
+        Length::Content
+    ])
 }
 
 pub static FLEX_BASIS: BuiltInStyle = BuiltInStyle {
@@ -59,8 +75,8 @@ pub static FLEX_BASIS: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_flex_grow(_: &StyleValue) {
-    todo!()
+fn apply_flex_grow(value: &StyleValue, context: &mut StyleContext) {
+    apply_float(value, &mut context.flex_grow);
 }
 
 pub static FLEX_GROW: BuiltInStyle = BuiltInStyle {
@@ -73,8 +89,8 @@ pub static FLEX_GROW: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_flex_shrink(_: &StyleValue) {
-    todo!()
+fn apply_flex_shrink(value: &StyleValue, context: &mut StyleContext) {
+    apply_float(value, &mut context.flex_grow);
 }
 
 pub static FLEX_SHRINK: BuiltInStyle = BuiltInStyle {
@@ -88,8 +104,12 @@ pub static FLEX_SHRINK: BuiltInStyle = BuiltInStyle {
 
 
 
-fn apply_flex_wrap(_: &StyleValue) {
-    todo!()
+fn apply_flex_wrap(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.flex_wrap, &[
+        FlexWrap::NoWrap,
+        FlexWrap::Wrap,
+        FlexWrap::WrapReverse
+    ]);
 }
 
 pub static FLEX_WRAP: BuiltInStyle = BuiltInStyle {
@@ -103,8 +123,8 @@ pub static FLEX_WRAP: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_column_gap(_: &StyleValue) {
-    todo!()
+fn apply_column_gap(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.column_gap);
 }
 
 pub static COLUMN_GAP: BuiltInStyle = BuiltInStyle {
@@ -115,8 +135,14 @@ pub static COLUMN_GAP: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_align_items(_: &StyleValue) {
-    todo!()
+fn apply_align_items(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.align_items, &[
+        AlignItems::FlexStart,
+        AlignItems::FlexEnd,
+        AlignItems::Center,
+        AlignItems::Baseline,
+        AlignItems::Stretch,
+    ])
 }
 
 pub static ALIGN_ITEMS: BuiltInStyle = BuiltInStyle {
@@ -130,8 +156,15 @@ pub static ALIGN_ITEMS: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_align_self(_: &StyleValue) {
-    todo!()
+fn apply_align_self(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.align_self, &[
+        AlignSelf::Auto,
+        AlignSelf::FlexStart,
+        AlignSelf::FlexEnd,
+        AlignSelf::Center,
+        AlignSelf::Baseline,
+        AlignSelf::Stretch,
+    ])
 }
 
 pub static ALIGN_SELF: BuiltInStyle = BuiltInStyle {
@@ -145,8 +178,8 @@ pub static ALIGN_SELF: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_gap(_: &StyleValue) {
-    todo!()
+fn apply_gap(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.gap);
 }
 
 pub static GAP: BuiltInStyle = BuiltInStyle {
@@ -157,8 +190,15 @@ pub static GAP: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_justify_content(_: &StyleValue) {
-    todo!()
+fn apply_justify_content(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.justify_content, &[
+        JustifyContent::FlexStart,
+        JustifyContent::FlexEnd,
+        JustifyContent::Center,
+        JustifyContent::SpaceBetween,
+        JustifyContent::SpaceAround,
+        JustifyContent::SpaceEvenly
+    ])
 }
 
 pub static JUSTIFY_CONTENT: BuiltInStyle = BuiltInStyle {
@@ -179,8 +219,8 @@ pub static JUSTIFY_CONTENT: BuiltInStyle = BuiltInStyle {
 
 
 
-fn apply_row_gap(_: &StyleValue) {
-    todo!()
+fn apply_row_gap(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.row_gap);
 }
 
 pub static ROW_GAP: BuiltInStyle = BuiltInStyle {

@@ -1,23 +1,6 @@
 use std::ops::RangeInclusive;
 use super::nodes::Node;
-use super::parser::{Parser, ParserWarning};
-
-pub(super) fn parse_all(input: &str) -> (Vec<Node>, Vec<ParserWarning>) {
-    let mut parser = Parser::new(input);
-    let mut nodes = Vec::new();
-    while let Some(node) = parser.parse_next() {
-        nodes.push(node);
-    }
-    (nodes, parser.get_warnings())
-}
-
-pub(super) fn parse_all_with_parser<'a>(parser: &mut Parser<'a>) -> (Vec<Node<'a>>, Vec<ParserWarning>) {
-    let mut nodes = Vec::new();
-    while let Some(node) = parser.parse_next() {
-        nodes.push(node);
-    }
-    (nodes, parser.get_warnings())
-}
+use super::document::{FlexmlDocument};
 
 pub(super)  fn check_inputs<'a>(
     inputs: &[&'a str],
@@ -26,10 +9,10 @@ pub(super)  fn check_inputs<'a>(
     expected_patterns: &[fn(&Node<'a>) -> bool],
 ) {
     for input in inputs {
-        let (nodes, errors) = parse_all(input);
+        let document = FlexmlDocument::new(input).parse();
 
-        let node_count = nodes.len();
-        let error_count = errors.len();
+        let node_count = document.nodes.len();
+        let error_count = document.warnings.len();
 
         assert!(
             expect_nodes.contains(&node_count),
@@ -45,7 +28,7 @@ pub(super)  fn check_inputs<'a>(
             input,
             expect_errors,
             error_count,
-            errors
+            document.warnings
         );
 
         for (i, pattern) in expected_patterns.iter().enumerate() {
@@ -57,11 +40,11 @@ pub(super)  fn check_inputs<'a>(
                 node_count
             );
             assert!(
-                pattern(&nodes[i]),
+                pattern(&document.nodes[i]),
                 "Input `{}`: Node {} did not match expected pattern got {:?}",
                 input,
                 i,
-                &nodes[i]
+                &document.nodes[i]
             );
         }
     }
@@ -121,7 +104,7 @@ fn parse_simple_box() {
             |n| {
                 if let Node::BoxContainer { styles, children } = n {
                     assert_eq!(styles.len(), 2);
-                    
+
                     assert_eq!(children.len(), 1);
                     if let Node::Text(text) = &children[0] {
                         assert_eq!(*text, "Hello World");
@@ -248,14 +231,13 @@ fn max_node_depth() {
     //6 deep
     let input = "[1 [2 [3 [4 [5 [6 [7 [8] 7] 6] 5] 4] 3] 2] 1] []";
 
-    let mut parser = Parser::new(input).with_max_depth(5);
-    let mut nodes = Vec::new();
-    while let Some(node) = parser.parse_next() {
-        nodes.push(node);
-    }
-    let warnings= parser.get_warnings();
+    let document = FlexmlDocument::new(input)
+        .with_max_depth(5)
+        .parse();
 
-    let actual_depth = count_box_depth(&nodes[0]);
+    let warnings= document.get_warnings();
+
+    let actual_depth = count_box_depth(&document.nodes[0]);
 
     assert_eq!(actual_depth, 5);
     assert_eq!(warnings.len(), 1);
@@ -282,15 +264,13 @@ fn max_nodes() {
     ];
 
     inputs.iter().for_each(|input| {
-        let mut parser = Parser::new(input).with_max_nodes(5);
-        let mut nodes = Vec::new();
-        while let Some(node) = parser.parse_next() {
-            nodes.push(node);
-        }
+        let document = FlexmlDocument::new(input)
+            .with_max_nodes(5)
+            .parse();
 
-        let warnings= parser.get_warnings();
+        let warnings= document.get_warnings();
 
-        let actual_count = count_nodes(&nodes);
+        let actual_count = count_nodes(&document.nodes);
 
         assert_eq!(actual_count, 5);
         assert_eq!(warnings.len(), 1);
@@ -302,8 +282,7 @@ fn max_nodes() {
 fn newline_handling() {
     let input = "\r\n\r\n\r\n";
 
-    let mut parser = Parser::new(input);
-    let (nodes, _) = parse_all_with_parser(&mut parser);
+    let document = FlexmlDocument::new(input).parse();
 
-    assert_eq!(nodes.len(), 0);
+    assert_eq!(document.nodes.len(), 0);
 }

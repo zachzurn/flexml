@@ -1,3 +1,4 @@
+use crate::layout::context::{Color, Dimension, Length, StyleContext};
 use crate::styles::style::{StyleValue, StyleValueParser};
 
 pub mod display;
@@ -15,10 +16,93 @@ pub struct BuiltInStyle {
     pub name: &'static str,
     pub parser: StyleValueParser,
     pub styles: &'static [(&'static str, StyleValue)],
-
-    #[allow(dead_code)]
-    pub apply_style: fn(&StyleValue),
+    pub apply_style: fn(&StyleValue, &mut StyleContext),
 }
+
+
+/// Helper for match type styles
+fn apply_match_style<T>(
+    value: &StyleValue,
+    context_field: &mut T,
+    variants: &[T],
+) where
+    T: Copy,
+{
+    if let StyleValue::Match(i) = value {
+        if let Some(val) = variants.get(*i as usize) {
+            *context_field = *val;
+        }
+    }
+}
+
+fn apply_color(
+    value: &StyleValue,
+    context_field: &mut Color,
+) {
+    match value {
+        StyleValue::Color(c) => {
+            *context_field = Color(c.r,c.g,c.b,c.a);
+        },
+        _ => return
+    }
+}
+
+fn apply_float(
+    value: &StyleValue,
+    context_field: &mut f32,
+) {
+    match value {
+        StyleValue::Float(v) => {
+            *context_field = *v;
+        },
+        _ => return
+    }
+}
+
+
+fn apply_dimension(
+    value: &StyleValue,
+    context_field: &mut Dimension,
+) {
+    match value {
+        StyleValue::Number(number) => {
+            *context_field = Dimension::Px(*number as i32);
+        },
+        StyleValue::NegativeNumber(number) => {
+            *context_field = Dimension::Px(0 - *number as i32);
+        },
+        StyleValue::Percent(percent) => {
+            *context_field = Dimension::Percent(percent.get())
+        }
+        _ => return
+    }
+}
+
+
+fn apply_length(
+    value: &StyleValue,
+    context_field: &mut Length,
+    variants: &[Length],
+) {
+    match value {
+        StyleValue::Number(number) => {
+            *context_field = Length::Px(*number as i32);
+        },
+        StyleValue::NegativeNumber(number) => {
+            *context_field = Length::Px(0 - *number as i32);
+        },
+        StyleValue::Percent(percent) => {
+            *context_field = Length::Percent(percent.get())
+        }
+        StyleValue::Match(i) => {
+            if let Some(val) = variants.get(*i as usize) {
+                *context_field = *val;
+            }
+        }
+        _ => return
+    }
+}
+
 
 
 pub static DEFAULT_BUILTINS : &[&'static BuiltInStyle] = &[

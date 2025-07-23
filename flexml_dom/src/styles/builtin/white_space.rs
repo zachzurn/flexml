@@ -1,9 +1,16 @@
-use crate::styles::builtin::{BuiltInStyle};
+use crate::layout::context::{StyleContext, WhiteSpace};
+use crate::styles::builtin::{apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue};
 use crate::styles::style::StyleValueParser::MatchParser;
 
-fn apply_white_space(_: &StyleValue) {
-    todo!()
+fn apply_white_space(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.white_space, &[
+        WhiteSpace::Normal,
+        WhiteSpace::NoWrap,
+        WhiteSpace::Pre,
+        WhiteSpace::PreWrap,
+        WhiteSpace::PreLine
+    ])
 }
 
 pub static WHITE_SPACE: BuiltInStyle = BuiltInStyle {

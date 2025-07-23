@@ -1,6 +1,6 @@
 use std::ops::Range;
 use ariadne::{Color, Label, Report, ReportKind, Source};
-use crate::parsing::parser::Parser;
+use crate::document::document::FlexmlDocument;
 use crate::strings::ParserWarnings;
 
 #[derive(Debug, Clone)]
@@ -28,26 +28,26 @@ pub enum ParserWarningKind {
     AtomicStyleDefinition
 }
 
-impl<'a> Parser<'a> {
+impl<'a> FlexmlDocument<'a> {
     pub fn get_warnings(&self) -> Vec<ParserWarning> {
         self.warnings.to_vec()
     }
 
-    pub fn print_warnings(&self, file_name: &str) {
+    pub fn print_warnings(&self) {
         let mut buffer = Vec::new();
 
         for warning in &self.warnings {
             let start = warning.span.start;
             let end = warning.span.end;
 
-            Report::build(ReportKind::Warning, (file_name, start..end))
+            Report::build(ReportKind::Warning, (&self.name, start..end))
                 .with_message(&warning.message)
-                .with_label(Label::new((file_name, start..end))
+                .with_label(Label::new((&self.name, start..end))
                     .with_message(&warning.label)
                     .with_color(Color::Green))
                 .with_help(&warning.help)
                 .finish()
-                .write((file_name, Source::from(self.input)), &mut buffer)
+                .write((&self.name, Source::from(self.input)), &mut buffer)
                 .unwrap();
         }
 

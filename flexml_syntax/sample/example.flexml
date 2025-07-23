@@ -6,7 +6,13 @@
     + fontSize: 3
 }
 
-[p
+{samsBox = 
+    bold +
+    font: fun.ttf +
+    color: #FF0000
+}
+
+[samsBox
     This is also a paragraph with some [b bold text] [ boxes in paragraphs are spans ]
 ]
 

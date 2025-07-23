@@ -1,9 +1,10 @@
-use crate::styles::builtin::BuiltInStyle;
-use crate::styles::style::StyleValue;
+use crate::layout::context::{BgPosition, BgRepeat, BgSize, Color, Image, StyleContext};
+use crate::styles::builtin::{apply_color, apply_match_style, BuiltInStyle};
+use crate::styles::style::{StyleValue, UrlType};
 use crate::styles::style::StyleValueParser::{ColorParser, MatchParser, UrlParser};
 
-fn apply_bg_color(_: &StyleValue) {
-    todo!()
+fn apply_bg_color(value: &StyleValue, context: &mut StyleContext) {
+    apply_color(value, &mut context.bg_color);
 }
 
 pub static BG_COLOR: BuiltInStyle = BuiltInStyle {
@@ -14,20 +15,31 @@ pub static BG_COLOR: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_bg_image(_: &StyleValue) {
-    todo!()
+fn apply_bg_image(value: &StyleValue, context: &mut StyleContext) {
+    match value {
+        StyleValue::Image(image_id) => {
+            context.set_bg_image(Image::UserDefined(image_id.clone()))
+        }
+        _ => {}
+    }
 }
 
 pub static BG_IMAGE: BuiltInStyle = BuiltInStyle {
     name: "bgImage",
-    parser: UrlParser,
+    parser: UrlParser(&UrlType::Image),
     styles: &[],
     apply_style: apply_bg_image,
 };
 
 
-fn apply_bg_position(_: &StyleValue) {
-    todo!()
+fn apply_bg_position(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.bg_position, &[
+        BgPosition::Center,
+        BgPosition::Top,
+        BgPosition::Bottom,
+        BgPosition::Left,
+        BgPosition::Right,
+    ]);
 }
 
 pub static BG_POSITION: BuiltInStyle = BuiltInStyle {
@@ -40,8 +52,13 @@ pub static BG_POSITION: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_bg_repeat(_: &StyleValue) {
-    todo!()
+fn apply_bg_repeat(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.bg_repeat, &[
+        BgRepeat::Repeat,
+        BgRepeat::RepeatX,
+        BgRepeat::RepeatY,
+        BgRepeat::NoRepeat
+    ]);
 }
 
 pub static BG_REPEAT: BuiltInStyle = BuiltInStyle {
@@ -57,8 +74,12 @@ pub static BG_REPEAT: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_bg_size(_: &StyleValue) {
-    todo!()
+fn apply_bg_size(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.bg_size, &[
+        BgSize::Auto,
+        BgSize::Cover,
+        BgSize::Contain
+    ]);
 }
 
 pub static BG_SIZE: BuiltInStyle = BuiltInStyle {

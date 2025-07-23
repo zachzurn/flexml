@@ -1,6 +1,8 @@
+use std::fs::FileType;
 use lazy_static::lazy_static;
 use url::Url;
 use crate::strings::{Chars, ValueErrors, ValueHelp};
+use crate::styles::style::StyleValue::{FontUrl, ImageUrl};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct RGBA {
@@ -24,10 +26,10 @@ impl RGBA {
     }
 }
 
-
 #[derive(PartialEq, Clone, Debug)]
-pub struct FontRef {
-
+pub enum UrlType {
+    Image,
+    Font
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -41,6 +43,10 @@ impl PercentFloat {
             PercentFloat(0.0)
         }
     }
+    
+    pub fn get(&self) -> f32 {
+        self.0
+    }
 }
 
 pub enum StyleValueParser {
@@ -50,8 +56,7 @@ pub enum StyleValueParser {
     PositiveNumberParser,
     MatchParser(&'static [&'static str]),
     ColorParser,
-    FontParser,
-    UrlParser,
+    UrlParser(&'static UrlType),
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -63,14 +68,20 @@ pub enum StyleValue {
     NegativeNumber(u16),
     Percent(PercentFloat),
     Float(f32),
-    Url(Url),
+    FontUrl(String),
+    ImageUrl(String),
     Match(u8),
     Color(RGBA),
-    Font(FontRef),
+    Font(FontId),
+    Image(ImageId),
+    Unset,
     Invalid(&'static str, &'static [&'static str]),
     Empty,
 }
 
+pub type FileId = usize;
+pub type FontId = usize;
+pub type ImageId = usize;
 pub type StyleId = usize;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -106,10 +117,9 @@ impl StyleValueParser {
             &StyleValueParser::MatchParser(matches) => Self::parse_match(matches, s),
             &StyleValueParser::MatchOrFloatParser(matches) => Self::parse_match_or_float(matches, s),
             &StyleValueParser::ColorParser => Self::parse_color(s),
-            &StyleValueParser::FontParser => Self::parse_font(s),
             &StyleValueParser::NumberParser => Self::parse_number(s),
             &StyleValueParser::PositiveNumberParser => Self::parse_positive_number(s),
-            &StyleValueParser::UrlParser => Self::parse_url(s),
+            &StyleValueParser::UrlParser(kind) => Self::parse_url(&kind, s),
             &StyleValueParser::FloatParser => Self::parse_float(s),
         }
     }
@@ -187,12 +197,15 @@ impl StyleValueParser {
         }
     }
 
-    fn parse_url(s: &str) -> StyleValue {
-        if let Ok(url) = BASE_URL.join(s) {
-            StyleValue::Url(url)
-        } else {
-            StyleValue::Invalid(ValueErrors::URL, ValueHelp::URL)
+    fn parse_url(kind: &UrlType, s: &str) -> StyleValue {
+        if s == "none" { return StyleValue::Unset }
+
+        match kind {
+            UrlType::Font => FontUrl(s.to_string()),
+            UrlType::Image => ImageUrl(s.to_string()),
         }
+
+        //StyleValue::Invalid(ValueErrors::URL, ValueHelp::URL)
     }
 
     fn parse_match(matches: &'static [&'static str], s: &str) -> StyleValue {
@@ -208,7 +221,7 @@ impl StyleValueParser {
         }
 
         // No match found
-        return StyleValue::Invalid(ValueErrors::MATCH, matches);
+        StyleValue::Invalid(ValueErrors::MATCH, matches)
     }
 
     fn parse_color(s: &str) -> StyleValue {
@@ -301,11 +314,6 @@ impl StyleValueParser {
             },
             _ => None,
         }
-    }
-
-    //TODO
-    fn parse_font(_: &str) -> StyleValue {
-        StyleValue::Font(FontRef {})
     }
 
 }

@@ -1,7 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use crate::strings::Chars;
+use url::Url;
+use crate::layout::context::StyleContext;
+use crate::strings::{Chars, ValueErrors, ValueHelp};
 use crate::styles::builtin::{BuiltInStyle, DEFAULT_BUILTINS};
-use super::style::{AtomicStyle, RawStyle, StyleId, StyleValue};
+use crate::styles::style::StyleValue::{Font, Image};
+use super::style::{AtomicStyle, FileId, FontId, ImageId, RawStyle, StyleId, StyleValue, StyleValueParser, UrlType};
 
 /// Style Registry is the central place
 /// to register atomic styles (Things like fontSize, fontWeight, etc)
@@ -12,12 +15,20 @@ use super::style::{AtomicStyle, RawStyle, StyleId, StyleValue};
 pub struct StyleRegistry {
     names: Vec<String>,
     names_map: HashMap<String, StyleId>,
+
+    paths: Vec<String>,
+    paths_map: HashMap<String, StyleId>,
+
     definitions: HashMap<StyleId, Vec<AtomicStyle>>,
     forwarders: HashMap<StyleId, Vec<StyleId>>,
     first_style: usize,
     first_custom_style: usize,
     builtins_registered: bool,
     builtins: Vec<&'static BuiltInStyle>,
+
+    base_path: Url,
+    image_urls: HashMap<ImageId, Url>,
+    font_urls: HashMap<FontId, Url>,
 }
 
 pub struct RegisteredStyle {
@@ -41,19 +52,74 @@ impl StyleRegistry {
         StyleRegistry {
             names: vec![],
             names_map: HashMap::new(),
+
+            paths: vec![],
+            paths_map: HashMap::new(),
+
             definitions: HashMap::new(),
             forwarders: HashMap::new(),
             builtins: Vec::new(),
             first_style: 0,
             first_custom_style: 0,
             builtins_registered: false,
+
+            font_urls: HashMap::new(),
+            image_urls: HashMap::new(),
+            base_path: Url::parse("flexml://").expect("Default base url is invalid."),
         }
+    }
+
+    pub fn set_file_base_path(&mut self, base_path: &Url) {
+        self.base_path = base_path.clone();
     }
 
     pub fn with_builtins() -> StyleRegistry {
         let mut registry = Self::new();
         registry.register_builtins(DEFAULT_BUILTINS);
         registry
+    }
+
+    pub fn print_atomics(&self) {
+        for builtin in &self.builtins {
+            let description = match builtin.parser {
+                StyleValueParser::PositiveNumberParser => {
+                    "positive number (u16 or percent float)"
+                },
+                StyleValueParser::FloatParser => {
+                    "float value f32"
+                },
+                StyleValueParser::ColorParser => {
+                    "color RGBA struct"
+                },
+                StyleValueParser::MatchParser(matches) => {
+                    &format!("One of: {}", matches.join(", "))
+                },
+                StyleValueParser::NumberParser => {
+                    "number (i32 or percent float)"
+                },
+                StyleValueParser::MatchOrFloatParser(matches) => {
+                    &format!("Float value or one of: {}", matches.join(", "))
+                },
+                StyleValueParser::UrlParser(kind) => {
+                    match kind {
+                        UrlType::Image => "image url",
+                        UrlType::Font => "font url",
+                    }
+                },
+            };
+
+            println!("{}: {}", builtin.name, description)
+        }
+    }
+
+    pub fn resolve_style(&self, parent: &StyleContext, styles: &[AtomicStyle]) -> StyleContext {
+        let mut context = *parent;
+
+        for atomic in styles {
+            &(self.builtins[atomic.id].apply_style)(&atomic.value, &mut context);
+        }
+
+        context
     }
 
     /// Interns a string name and returns its StyleId.
@@ -65,6 +131,18 @@ impl StyleRegistry {
         let id = self.names.len();
         self.names.push(name.to_string());
         self.names_map.insert(name.to_string(), id);
+        id
+    }
+
+    /// Interns a string name and returns its StyleId.
+    /// If the name already exists, returns its existing StyleId.
+    fn intern_path(&mut self, path: &str) -> FileId {
+        if let Some(&id) = self.paths_map.get(path) {
+            return id;
+        }
+        let id = self.paths.len();
+        self.names.push(path.to_string());
+        self.names_map.insert(path.to_string(), id);
         id
     }
 
@@ -123,7 +201,7 @@ impl StyleRegistry {
         let style_id = self.intern_name(style_name);
 
         // This is an atomic style, cannot be overwritten, we return as such
-        if style_id < self.first_style {
+        if self.is_atomic(&style_id) {
             return RegisteredStyle { style_id, atomic: true, overwrote: false, builtin: true };
         }
 
@@ -133,7 +211,7 @@ impl StyleRegistry {
         // Store forwarding info
         self.forwarders.insert(style_id, forwards);
 
-        let builtin = style_id < self.first_custom_style;
+        let builtin = !self.is_custom(&style_id);
 
         RegisteredStyle {
             style_id,
@@ -178,7 +256,7 @@ impl StyleRegistry {
                     let value = if let Some(raw_value) = raw.value { parser.parse(raw_value) } else { StyleValue::Empty };
 
                     atomic_set.insert(id);
-                    atomic_styles.push(AtomicStyle { id, value });
+                    atomic_styles.push(AtomicStyle { id, value: self.transform_value(value) });
                 }
             } else {
                 let existing_style = self.definitions.get(&id);
@@ -198,12 +276,13 @@ impl StyleRegistry {
                 // to its own atomic entries. values are separated with ">"
                 if let Some(raw_value) = raw.value {
                     if let Some(forwarders) = self.forwarders.get(&id) {
+                        let fwd = forwarders.clone();
                         for (i, value) in raw_value.split(Chars::FORWARD).enumerate() {
-                            if let Some(forwards_to) = forwarders.get(i) {
+                            if let Some(forwards_to) = fwd.get(i) {
                                 if self.is_atomic(forwards_to) && !atomic_set.contains(forwards_to) {
-                                    let forward_value = self.builtins[*forwards_to].parser.parse(raw_value);
+                                    let forward_value = self.builtins[*forwards_to].parser.parse(value);
                                     atomic_set.insert(*forwards_to);
-                                    atomic_styles.push(AtomicStyle { id: *forwards_to, value: forward_value });
+                                    atomic_styles.push(AtomicStyle { id: *forwards_to, value: self.transform_value(forward_value) });
                                 }
                             }
                         }
@@ -216,6 +295,34 @@ impl StyleRegistry {
         atomic_styles.reverse();
         forwards.reverse();
         (atomic_styles, forwards)
+    }
+
+    /// File type style values need to hold a file reference, so we handle
+    /// interning and storing here
+    fn transform_value(&mut self, value: StyleValue) -> StyleValue {
+        match value {
+            StyleValue::FontUrl(font_url) => {
+                let file_id = self.intern_path(&font_url);
+
+                if let Ok(url) = self.base_path.join(&font_url){
+                    self.font_urls.insert(file_id, url);
+                    Font(file_id)
+                } else {
+                    StyleValue::Invalid(ValueErrors::URL, ValueHelp::URL)
+                }
+            },
+            StyleValue::ImageUrl(image_url) => {
+                let file_id = self.intern_path(&image_url);
+
+                if let Ok(url) = self.base_path.join(&image_url){
+                    self.image_urls.insert(file_id, url);
+                    Image(file_id)
+                } else {
+                    StyleValue::Invalid(ValueErrors::URL, ValueHelp::URL)
+                }
+            },
+            _ => value
+        }
     }
 
     /// Retrieves the definition for a given alias StyleId.

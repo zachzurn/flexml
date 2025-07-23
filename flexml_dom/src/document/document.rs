@@ -1,11 +1,118 @@
 use super::nodes::{Node};
 use super::tokens::Token;
 use super::tokens::Token::*;
-pub(crate) use crate::parsing::warnings::ParserWarning;
-use crate::parsing::warnings::ParserWarningKind::*;
+pub(crate) use crate::document::warnings::ParserWarning;
+use crate::document::warnings::ParserWarningKind::*;
 use logos::{Lexer, Logos, Span};
 use crate::styles::style::{AtomicStyle, RawStyle, StyleId};
 use crate::styles::style_registry::StyleRegistry;
+
+pub struct FlexmlDocument<'a> {
+    pub(crate) input: &'a str,
+    pub(crate) style_registry: StyleRegistry,
+    pub(crate) warnings: Vec<ParserWarning>,
+    pub(crate) nodes: Vec<Node<'a>>,
+    pub(crate) name: String,
+
+    width: usize,
+    height: usize,
+    ppi: usize,
+
+    parsed: bool,
+    lexer: Lexer<'a, Token>,
+    peeked: Option<(Token, &'a str)>,
+    header_parsed: bool,
+    max_depth: usize,
+    max_nodes: usize,
+    node_guard: Guard,
+    depth_guard: Guard,
+}
+
+/// Parse flexml
+///
+/// ```
+/// let input = "[bold+italic this is some text ]";
+///
+/// let mut parser = Parser::new(input);
+///
+/// while let Some(node) = parser.parse_next() {
+///     println!("{:#?}", node);
+/// }
+/// ```
+impl<'a> FlexmlDocument<'a> {
+    /// Create a new flexml document
+    pub fn new(input: &'a str) -> Self {
+        let mut parser = Self {
+            input,
+            style_registry: StyleRegistry::with_builtins(),
+            warnings: Vec::new(),
+            nodes: Vec::new(),
+            name: "FlexmlDocument".to_string(),
+            width: 816,
+            height: 1056,
+            ppi: 96,
+
+            lexer: Token::lexer(input),
+            peeked: None,
+            header_parsed: false,
+            max_depth: 50,
+            max_nodes: 10_000,
+            node_guard: Guard::new(10_000),
+            depth_guard: Guard::new(50),
+            parsed: false,
+
+        };
+
+        if input.is_empty() {
+            parser.warn(0..0, EmptyInput)
+        }
+
+        parser
+    }
+
+    pub fn with_ppi(mut self, ppi: usize) -> Self {
+        self.ppi = ppi;
+        self
+    }
+
+    pub fn with_page_size(mut self, width: usize, height: usize) -> Self {
+        self.width = width;
+        self.height = height;
+        self
+    }
+
+
+
+    pub fn with_max_depth(mut self, max_depth: usize) -> Self {
+        self.max_depth = max_depth;
+        self.depth_guard.limit = max_depth;
+        self
+    }
+
+    pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
+        self.max_nodes = max_nodes;
+        self.node_guard.limit = max_nodes;
+        self
+    }
+
+    pub fn with_name(mut self, name: &str) -> Self {
+        self.name = name.to_owned();
+        self
+    }
+
+    pub fn parse(mut self) -> Self {
+        if self.parsed { return self }
+
+        while let Some(node) = self.parse_next() {
+            self.nodes.push(node);
+        }
+
+        self.parsed = true;
+
+        self
+    }
+}
+
 
 struct Guard {
     limit: usize,
@@ -33,70 +140,10 @@ impl Guard {
     }
 }
 
-pub struct Parser<'a> {
-    style_registry: StyleRegistry,
-    lexer: Lexer<'a, Token>,
-    pub(super) input: &'a str,
-    peeked: Option<(Token, &'a str)>,
-    header_parsed: bool,
-    pub(super) warnings: Vec<ParserWarning>,
-    max_depth: usize,
-    max_nodes: usize,
-    node_guard: Guard,
-    depth_guard: Guard,
-}
-
-/// Parse flexml
-///
-/// ```
-/// let input = "[bold+italic this is some text ]";
-///
-/// let mut parser = Parser::new(input);
-///
-/// while let Some(node) = parser.parse_next() {
-///     println!("{:#?}", node);
-/// }
-/// ```
-impl<'a> Parser<'a> {
-    /// Create a one time use parser for parsing flexml
-    pub fn new(input: &'a str) -> Self {
-        let mut parser = Self {
-            style_registry: StyleRegistry::with_builtins(),
-            lexer: Token::lexer(input),
-            input,
-            peeked: None,
-            header_parsed: false,
-            warnings: Vec::new(),
-            max_depth: 50,
-            max_nodes: 10_000,
-            node_guard: Guard::new(10_000),
-            depth_guard: Guard::new(50),
-        };
-
-        if input.is_empty() {
-            parser.warn(0..0, EmptyInput)
-        }
-
-        parser
-    }
-
-    pub fn with_max_depth(mut self, max_depth: usize) -> Self {
-        self.max_depth = max_depth;
-        self.depth_guard.limit = max_depth;
-        self
-    }
-
-    pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
-        self.max_nodes = max_nodes;
-        self.node_guard.limit = max_nodes;
-        self
-    }
-}
-
-impl<'a> Parser<'a> {
+impl<'a> FlexmlDocument<'a> {
     /// Parse the next flexml node
     /// Call this method until None.
-    pub fn parse_next(&mut self) -> Option<Node<'a>> {
+    fn parse_next(&mut self) -> Option<Node<'a>> {
         if self.node_guard.exceeded { return None; }
 
         // Parse for header nodes
@@ -425,11 +472,11 @@ impl<'a> Parser<'a> {
 }
 
 /// Utility type fn
-impl<'a> Parser<'a> {
+impl<'a> FlexmlDocument<'a> {
     /// Advances the lexer to the next valid token and returns it along with its matched input slice.
     /// Errors are ignored but sent off as warnings
     fn next_with_slice(&mut self) -> Option<(Token, &'a str)> {
-        while let Some(result) = self.lexer.next() {
+        if let Some(result) = self.lexer.next() {
             return match result {
                 Ok(tok) => {
                     let slice = self.lexer.slice();

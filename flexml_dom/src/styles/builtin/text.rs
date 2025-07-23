@@ -1,10 +1,11 @@
-use crate::styles::builtin::BuiltInStyle;
-use crate::styles::style::StyleValue;
+use crate::layout::context::{FontFamily, FontStyle, FontWeight, StyleContext, TextAlign, TextDecoration, TextTransform};
+use crate::styles::builtin::{apply_color, apply_dimension, apply_match_style, BuiltInStyle};
+use crate::styles::style::{StyleValue, UrlType};
 use crate::styles::style::StyleValue::{Forward};
-use crate::styles::style::StyleValueParser::{ColorParser, FontParser, MatchParser, PositiveNumberParser};
+use crate::styles::style::StyleValueParser::{ColorParser, MatchParser, PositiveNumberParser, UrlParser};
 
-fn apply_text_color(_: &StyleValue) {
-    todo!()
+fn apply_text_color(value: &StyleValue, context: &mut StyleContext) {
+    apply_color(value, &mut context.color);
 }
 
 pub static TEXT_COLOR: BuiltInStyle = BuiltInStyle {
@@ -15,13 +16,18 @@ pub static TEXT_COLOR: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_font(_: &StyleValue) {
-    todo!()
+fn apply_text_font(value: &StyleValue, context: &mut StyleContext) {
+    match value {
+        StyleValue::Font(value) => {
+            context.font_family = FontFamily::UserDefined(*value);
+        }
+        _ => return
+    }
 }
 
 pub static TEXT_FONT: BuiltInStyle = BuiltInStyle {
     name: "fontFamily",
-    parser: FontParser,
+    parser: UrlParser(&UrlType::Font),
     styles: &[
         ("font", Forward),
         ("textFont", Forward)
@@ -30,8 +36,8 @@ pub static TEXT_FONT: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_size(_: &StyleValue) {
-    todo!()
+fn apply_text_size(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.font_size);
 }
 
 pub static TEXT_SIZE: BuiltInStyle = BuiltInStyle {
@@ -42,8 +48,12 @@ pub static TEXT_SIZE: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_style(_: &StyleValue) {
-    todo!()
+fn apply_text_style(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.font_style, &[
+        FontStyle::Normal,
+        FontStyle::Italic,
+        FontStyle::Oblique
+    ])
 }
 
 pub static TEXT_STYLE: BuiltInStyle = BuiltInStyle {
@@ -58,8 +68,23 @@ pub static TEXT_STYLE: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_weight(_: &StyleValue) {
-    todo!()
+fn apply_text_weight(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.font_weight, &[
+        FontWeight::Normal,
+        FontWeight::Bold,
+        FontWeight::Light,
+        FontWeight::Bolder,
+        FontWeight::Lighter,
+        FontWeight::W100,
+        FontWeight::W200,
+        FontWeight::W300,
+        FontWeight::W400,
+        FontWeight::W500,
+        FontWeight::W600,
+        FontWeight::W700,
+        FontWeight::W800,
+        FontWeight::W900,
+    ])
 }
 
 pub static TEXT_WEIGHT: BuiltInStyle = BuiltInStyle {
@@ -91,8 +116,8 @@ pub static TEXT_WEIGHT: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_letter_spacing(_: &StyleValue) {
-    todo!()
+fn apply_text_letter_spacing(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.letter_spacing);
 }
 
 pub static TEXT_LETTER_SPACING: BuiltInStyle = BuiltInStyle {
@@ -103,8 +128,8 @@ pub static TEXT_LETTER_SPACING: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_word_spacing(_: &StyleValue) {
-    todo!()
+fn apply_text_word_spacing(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.word_spacing);
 }
 
 pub static TEXT_WORD_SPACING: BuiltInStyle = BuiltInStyle {
@@ -115,8 +140,8 @@ pub static TEXT_WORD_SPACING: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_line_height(_: &StyleValue) {
-    todo!()
+fn apply_text_line_height(value: &StyleValue, context: &mut StyleContext) {
+    apply_dimension(value, &mut context.line_height);
 }
 
 pub static TEXT_LINE_HEIGHT: BuiltInStyle = BuiltInStyle {
@@ -127,8 +152,13 @@ pub static TEXT_LINE_HEIGHT: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_transform(_: &StyleValue) {
-    todo!()
+fn apply_text_transform(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.text_transform, &[
+        TextTransform::None,
+        TextTransform::Capitalize,
+        TextTransform::Uppercase,
+        TextTransform::Lowercase,
+    ])
 }
 
 pub static TEXT_TRANSFORM: BuiltInStyle = BuiltInStyle {
@@ -143,8 +173,13 @@ pub static TEXT_TRANSFORM: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_align(_: &StyleValue) {
-    todo!()
+fn apply_text_align(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.text_align, &[
+        TextAlign::Left,
+        TextAlign::Right,
+        TextAlign::Center,
+        TextAlign::Justify
+    ])
 }
 
 pub static TEXT_ALIGN: BuiltInStyle = BuiltInStyle {
@@ -160,8 +195,13 @@ pub static TEXT_ALIGN: BuiltInStyle = BuiltInStyle {
 };
 
 
-fn apply_text_decoration(_: &StyleValue) {
-    todo!()
+fn apply_text_decoration(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.text_decoration, &[
+        TextDecoration::None,
+        TextDecoration::Underline,
+        TextDecoration::Overline,
+        TextDecoration::LineThrough
+    ])
 }
 
 pub static TEXT_DECORATION: BuiltInStyle = BuiltInStyle {

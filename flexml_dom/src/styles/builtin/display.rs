@@ -1,9 +1,16 @@
-use crate::styles::builtin::{BuiltInStyle};
+use crate::layout::context::{Display, StyleContext};
+use crate::styles::builtin::{apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue};
 use crate::styles::style::StyleValueParser::MatchParser;
 
-fn apply_display(_: &StyleValue) {
-    todo!()
+fn apply_display(value: &StyleValue, context: &mut StyleContext) {
+    apply_match_style(value, &mut context.display, &[
+        Display::Block,
+        Display::Inline,
+        Display::InlineBlock,
+        Display::Flex,
+        Display::Table
+    ]);
 }
 
 pub static DISPLAY: BuiltInStyle = BuiltInStyle {
