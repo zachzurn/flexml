@@ -1,7 +1,8 @@
 use bitflags::bitflags;
+use logos::Source;
 use paste::paste;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Dimension {
     Px(i32),
     Percent(f32),
@@ -13,7 +14,7 @@ impl Default for Dimension {
     }
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub enum FontFamily {
     #[default]
     SansSerif,
@@ -22,14 +23,14 @@ pub enum FontFamily {
     UserDefined(usize)
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub enum Image {
     #[default]
     None,
     UserDefined(usize),
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub enum Length {
     #[default]
     Auto,
@@ -213,12 +214,12 @@ pub enum BorderStyle {
 }
 
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Color(pub u8, pub u8, pub u8, pub u8); // RGBA
 
 
 bitflags! {
-    #[derive(Default, Clone, Copy)]
+    #[derive(Default, Clone, Copy, Debug, PartialEq)]
     pub struct StyleBits: u64 {
         const DISPLAY              = 1 << 0;
         const WHITE_SPACE          = 1 << 1;
@@ -285,8 +286,22 @@ bitflags! {
     }
 }
 
+static INHERITABLE_STYLES: &[StyleBits] = &[
+    StyleBits::COLOR,
+    StyleBits::FONT_FAMILY,
+    StyleBits::FONT_SIZE,
+    StyleBits::FONT_STYLE,
+    StyleBits::FONT_WEIGHT,
+    StyleBits::LETTER_SPACING,
+    StyleBits::LINE_HEIGHT,
+    StyleBits::TEXT_ALIGN,
+    StyleBits::TEXT_DECORATION,
+    StyleBits::TEXT_TRANSFORM,
+    StyleBits::WHITE_SPACE,
+    StyleBits::WORD_SPACING,
+];
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct StyleContext {
     pub bits: StyleBits,
 
@@ -366,16 +381,54 @@ macro_rules! style_field {
             pub fn [<has_ $field>](&self) -> bool {
                 self.bits.contains($bit)
             }
-            pub fn [<effective_ $field>](&self, fallback: $ty) -> $ty where $ty: Copy {
-                if self.bits.contains($bit) {
-                    self.$field
-                } else {
-                    fallback
-                }
-            }
+            // pub fn [<effective_ $field>](&self, fallback: $ty) -> $ty where $ty: Copy {
+            //     if self.bits.contains($bit) {
+            //         self.$field
+            //     } else {
+            //         fallback
+            //     }
+            // }
         }
     };
 }
+
+
+impl StyleContext {
+    pub fn cascade_from(&mut self, parent: &StyleContext) {
+        for &bit in INHERITABLE_STYLES {
+            if !self.bits.contains(bit) && parent.bits.contains(bit) {
+                match bit {
+                    StyleBits::COLOR => self.color = parent.color,
+                    StyleBits::FONT_FAMILY => self.font_family = parent.font_family.clone(),
+                    StyleBits::FONT_SIZE => self.font_size = parent.font_size,
+                    StyleBits::FONT_STYLE => self.font_style = parent.font_style,
+                    StyleBits::FONT_WEIGHT => self.font_weight = parent.font_weight,
+                    StyleBits::LETTER_SPACING => self.letter_spacing = parent.letter_spacing,
+                    StyleBits::LINE_HEIGHT => self.line_height = parent.line_height,
+                    StyleBits::TEXT_ALIGN => self.text_align = parent.text_align,
+                    StyleBits::TEXT_DECORATION => self.text_decoration = parent.text_decoration,
+                    StyleBits::TEXT_TRANSFORM => self.text_transform = parent.text_transform,
+                    StyleBits::WHITE_SPACE => self.white_space = parent.white_space,
+                    StyleBits::WORD_SPACING => self.word_spacing = parent.word_spacing,
+                    _ => {}
+                }
+
+                self.bits.insert(bit);
+            }
+        }
+
+        //Enforce auto display rules
+        if !self.has_display() {
+            match parent.display {
+                Display::Inline | Display::Block | Display::InlineBlock => {
+                    self.set_display(Display::Inline);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 
 impl StyleContext {
     style_field!(display: Display, StyleBits::DISPLAY, Display::Block);

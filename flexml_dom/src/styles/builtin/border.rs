@@ -1,4 +1,4 @@
-use crate::layout::context::{BorderStyle, StyleContext};
+use crate::styles::context::{BorderStyle, StyleContext};
 use crate::styles::builtin::{apply_color, apply_dimension, apply_match_style, BuiltInStyle};
 use crate::styles::style::StyleValue;
 use crate::styles::style::StyleValueParser::{ColorParser, MatchParser, NumberParser};

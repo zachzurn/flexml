@@ -4,12 +4,14 @@ use super::tokens::Token::*;
 pub(crate) use crate::document::warnings::ParserWarning;
 use crate::document::warnings::ParserWarningKind::*;
 use logos::{Lexer, Logos, Span};
+use crate::styles::context::StyleContext;
 use crate::styles::style::{AtomicStyle, RawStyle, StyleId};
 use crate::styles::style_registry::StyleRegistry;
 
 pub struct FlexmlDocument<'a> {
     pub(crate) input: &'a str,
     pub(crate) style_registry: StyleRegistry,
+    pub(crate) root_style: StyleContext,
     pub(crate) warnings: Vec<ParserWarning>,
     pub(crate) nodes: Vec<Node<'a>>,
     pub(crate) name: String,
@@ -45,6 +47,7 @@ impl<'a> FlexmlDocument<'a> {
         let mut parser = Self {
             input,
             style_registry: StyleRegistry::with_builtins(),
+            root_style: StyleContext::default(),
             warnings: Vec::new(),
             nodes: Vec::new(),
             name: "FlexmlDocument".to_string(),
@@ -159,7 +162,10 @@ impl<'a> FlexmlDocument<'a> {
 
         // Top level container, so reset the depth_guard
         self.depth_guard.reset();
-        self.parse_content()
+
+        let root_style= self.root_style;
+
+        self.parse_content(&root_style)
     }
 
     fn parse_header(&mut self) -> Option<Node<'a>> {
@@ -186,7 +192,7 @@ impl<'a> FlexmlDocument<'a> {
     /// Parses content, text, box containers, etc.
     /// Every time this is called, we check the depth
     ///
-    fn parse_content(&mut self) -> Option<Node<'a>> {
+    fn parse_content(&mut self, parent_style: &StyleContext) -> Option<Node<'a>> {
         while let Some((tok, slice)) = self.take() {
             return match tok {
                 TagContainer => {
@@ -215,7 +221,7 @@ impl<'a> FlexmlDocument<'a> {
                         }
                         continue;
                     } else {
-                        Some(self.parse_box_container())
+                        Some(self.parse_box_container(parent_style))
                     };
                 }
 
@@ -389,7 +395,7 @@ impl<'a> FlexmlDocument<'a> {
     /// Box containers can optionally have styles
     /// Box containers always have whitespace or newlines to start the children
     /// content parsing
-    fn parse_box_container(&mut self) -> Node<'a> {
+    fn parse_box_container(&mut self, parent_style: &StyleContext) -> Node<'a> {
         // We ignore forwarders on inline styles
         // Forwarders only apply to style definitions
         let (styles, _forwarders) = self.parse_styles();
@@ -405,7 +411,7 @@ impl<'a> FlexmlDocument<'a> {
                         break;
                     }
                     _ => {
-                        if let Some(child) = self.parse_content() {
+                        if let Some(child) = self.parse_content(parent_style) {
                             children.push(child);
                         } else {
                             break;
@@ -430,7 +436,9 @@ impl<'a> FlexmlDocument<'a> {
             self.warn(self.lexer.span(), UnclosedBoxContainer);
         }
 
-        Node::BoxContainer { styles, children }
+        let style = self.style_registry.resolve_style(parent_style, &styles);
+
+        Node::BoxContainer {styles, style, children }
     }
 
     /// Styles always start with a named with alternating separators

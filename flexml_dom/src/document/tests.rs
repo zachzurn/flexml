@@ -102,7 +102,7 @@ fn parse_simple_box() {
         0..=0,
         &[
             |n| {
-                if let Node::BoxContainer { styles, children } = n {
+                if let Node::BoxContainer { styles, style, children } = n {
                     assert_eq!(styles.len(), 2);
 
                     assert_eq!(children.len(), 1);

@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use url::Url;
-use crate::layout::context::StyleContext;
 use crate::strings::{Chars, ValueErrors, ValueHelp};
 use crate::styles::builtin::{BuiltInStyle, DEFAULT_BUILTINS};
+use crate::styles::context::StyleContext;
 use crate::styles::style::StyleValue::{Font, Image};
 use super::style::{AtomicStyle, FileId, FontId, ImageId, RawStyle, StyleId, StyleValue, StyleValueParser, UrlType};
 
@@ -113,11 +113,15 @@ impl StyleRegistry {
     }
 
     pub fn resolve_style(&self, parent: &StyleContext, styles: &[AtomicStyle]) -> StyleContext {
-        let mut context = *parent;
+        let mut context = StyleContext::default();
 
+        // First set the styles
         for atomic in styles {
             &(self.builtins[atomic.id].apply_style)(&atomic.value, &mut context);
         }
+        
+        // Cascade styles from the parent that were not explicitly set above
+        context.cascade_from(parent);
 
         context
     }

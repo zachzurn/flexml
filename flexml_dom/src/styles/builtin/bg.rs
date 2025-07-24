@@ -1,4 +1,4 @@
-use crate::layout::context::{BgPosition, BgRepeat, BgSize, Color, Image, StyleContext};
+use crate::styles::context::{BgPosition, BgRepeat, BgSize, Color, Image, StyleContext};
 use crate::styles::builtin::{apply_color, apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue, UrlType};
 use crate::styles::style::StyleValueParser::{ColorParser, MatchParser, UrlParser};
@@ -16,12 +16,9 @@ pub static BG_COLOR: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_bg_image(value: &StyleValue, context: &mut StyleContext) {
-    match value {
-        StyleValue::Image(image_id) => {
-            context.set_bg_image(Image::UserDefined(image_id.clone()))
-        }
-        _ => {}
-    }
+    if let StyleValue::Image(image_id) = value {
+        context.set_bg_image(Image::UserDefined(*image_id))
+    };
 }
 
 pub static BG_IMAGE: BuiltInStyle = BuiltInStyle {

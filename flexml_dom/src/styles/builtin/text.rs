@@ -1,4 +1,4 @@
-use crate::layout::context::{FontFamily, FontStyle, FontWeight, StyleContext, TextAlign, TextDecoration, TextTransform};
+use crate::styles::context::{FontFamily, FontStyle, FontWeight, StyleContext, TextAlign, TextDecoration, TextTransform};
 use crate::styles::builtin::{apply_color, apply_dimension, apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue, UrlType};
 use crate::styles::style::StyleValue::{Forward};

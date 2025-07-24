@@ -1,3 +1,4 @@
+use crate::styles::context::StyleContext;
 use crate::styles::style::{AtomicStyle, StyleId};
 
 /// All Flexml node types
@@ -20,6 +21,7 @@ pub enum Node<'a> {
     // Box with children
     BoxContainer {
         styles: Vec<AtomicStyle>,
+        style: StyleContext,
         children: Vec<Node<'a>>,
     },
 }

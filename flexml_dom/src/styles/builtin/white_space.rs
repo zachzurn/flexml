@@ -1,4 +1,4 @@
-use crate::layout::context::{StyleContext, WhiteSpace};
+use crate::styles::context::{StyleContext, WhiteSpace};
 use crate::styles::builtin::{apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue};
 use crate::styles::style::StyleValueParser::MatchParser;
