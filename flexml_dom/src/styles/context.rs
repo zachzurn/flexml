@@ -159,25 +159,6 @@ pub enum FontStyle {
 }
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FontWeight {
-    #[default]
-    Normal,
-    Bold,
-    Light,
-    Bolder,
-    Lighter,
-    W100,
-    W200,
-    W300,
-    W400,
-    W500,
-    W600,
-    W700,
-    W800,
-    W900,
-}
-
-#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BgPosition {
     #[default]
     Center,
@@ -346,12 +327,12 @@ pub struct StyleContext {
     pub color: Color,
     pub text_decoration: TextDecoration,
     pub font_family: FontFamily,
-    pub font_size: Dimension,
+    pub font_size: f32,
     pub font_style: FontStyle,
     pub text_transform: TextTransform,
     pub letter_spacing: Dimension,
-    pub line_height: Dimension,
-    pub font_weight: FontWeight,
+    pub line_height: f32,
+    pub font_weight: u16,
     pub word_spacing: Dimension,
 
     pub bg_color: Color,
@@ -472,12 +453,12 @@ impl StyleContext {
     style_field!(color: Color, StyleBits::COLOR, Color(0, 0, 0, 255));
     style_field!(text_decoration: TextDecoration, StyleBits::TEXT_DECORATION, TextDecoration::None);
     style_field!(font_family: FontFamily, StyleBits::FONT_FAMILY, FontFamily::Default);
-    style_field!(font_size: Dimension, StyleBits::FONT_SIZE, Dimension::Default);
+    style_field!(font_size: f32, StyleBits::FONT_SIZE, 12.0);
     style_field!(font_style: FontStyle, StyleBits::FONT_STYLE, FontStyle::Normal);
     style_field!(text_transform: TextTransform, StyleBits::TEXT_TRANSFORM, TextTransform::None);
     style_field!(letter_spacing: Dimension, StyleBits::LETTER_SPACING, Dimension::default());
-    style_field!(line_height: Dimension, StyleBits::LINE_HEIGHT, Dimension::default());
-    style_field!(font_weight: FontWeight, StyleBits::FONT_WEIGHT, FontWeight::Normal);
+    style_field!(line_height: f32, StyleBits::LINE_HEIGHT, 15.0);
+    style_field!(font_weight: u16, StyleBits::FONT_WEIGHT, 300);
     style_field!(word_spacing: Dimension, StyleBits::WORD_SPACING, Dimension::default());
 
     style_field!(bg_color: Color, StyleBits::BG_COLOR, Color(255, 255, 255, 255));
@@ -541,7 +522,7 @@ impl Default for StyleContext {
             text_transform: Default::default(),
             letter_spacing: Default::default(),
             line_height: Default::default(),
-            font_weight: Default::default(),
+            font_weight: 300,
             word_spacing: Default::default(),
             bg_color: Color(255,255,255,255),
             bg_image: Image::None,

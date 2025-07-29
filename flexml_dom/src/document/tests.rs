@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 use super::nodes::Node;
-use super::document::{FlexmlDocument};
+use super::parser::{FlexmlDocument};
 
 pub(super)  fn check_inputs<'a>(
     inputs: &[&'a str],
@@ -102,7 +102,7 @@ fn parse_simple_box() {
         0..=0,
         &[
             |n| {
-                if let Node::BoxContainer { styles, style, children } = n {
+                if let Node::BoxContainer { styles, children } = n {
                     assert_eq!(styles.len(), 2);
 
                     assert_eq!(children.len(), 1);
@@ -257,7 +257,7 @@ fn count_nodes(nodes: &[Node]) -> usize {
 
 #[test]
 fn max_nodes() {
-    let inputs = vec![
+    let inputs = [
         "[1 [2 [3 [4 [5 [6 [7 [8] 7] 6] 5] 4] 3] 2] 1] []",
         "[] [] [] [] [] [] [] []",
         "{myStyle = bold} {myOtherStyle = fontSize:3} [ My box [ with a child ] ] [And another box]"
@@ -267,6 +267,8 @@ fn max_nodes() {
         let document = FlexmlDocument::new(input)
             .with_max_nodes(5)
             .parse();
+
+        println!("{:?}",document.nodes);
 
         let warnings= document.get_warnings();
 

@@ -1,6 +1,6 @@
 mod tokens;
 pub mod nodes;
-pub mod document;
+pub mod parser;
 mod warnings;
 
 #[cfg(test)]

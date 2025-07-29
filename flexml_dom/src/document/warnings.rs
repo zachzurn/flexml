@@ -1,6 +1,6 @@
 use std::ops::Range;
 use ariadne::{Color, Label, Report, ReportKind, Source};
-use crate::document::document::FlexmlDocument;
+use crate::document::parser::FlexmlDocument;
 use crate::strings::ParserWarnings;
 
 #[derive(Debug, Clone)]

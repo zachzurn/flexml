@@ -117,9 +117,9 @@ impl StyleRegistry {
 
         // First set the styles
         for atomic in styles {
-            &(self.builtins[atomic.id].apply_style)(&atomic.value, &mut context);
+            (self.builtins[atomic.id].apply_style)(&atomic.value, &mut context);
         }
-        
+
         // Cascade styles from the parent that were not explicitly set above
         context.cascade_from(parent);
 

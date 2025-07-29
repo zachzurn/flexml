@@ -1,9 +1,11 @@
+use std::mem;
 use super::nodes::{Node};
 use super::tokens::Token;
 use super::tokens::Token::*;
 pub(crate) use crate::document::warnings::ParserWarning;
 use crate::document::warnings::ParserWarningKind::*;
 use logos::{Lexer, Logos, Span};
+use crate::document::nodes::Node::BoxContainer;
 use crate::styles::context::StyleContext;
 use crate::styles::style::{AtomicStyle, RawStyle, StyleId};
 use crate::styles::style_registry::StyleRegistry;
@@ -14,6 +16,7 @@ pub struct FlexmlDocument<'a> {
     pub(crate) root_style: StyleContext,
     pub(crate) warnings: Vec<ParserWarning>,
     pub(crate) nodes: Vec<Node<'a>>,
+    pub(crate) styles: Vec<Node<'a>>,
     pub(crate) name: String,
 
     width: usize,
@@ -50,6 +53,7 @@ impl<'a> FlexmlDocument<'a> {
             root_style: StyleContext::default(),
             warnings: Vec::new(),
             nodes: Vec::new(),
+            styles: Vec::new(),
             name: "FlexmlDocument".to_string(),
             width: 816,
             height: 1056,
@@ -111,6 +115,48 @@ impl<'a> FlexmlDocument<'a> {
         }
 
         self.parsed = true;
+        self
+    }
+
+    pub fn parse_special(mut self) -> Self {
+        if self.parsed { return self }
+
+        let mut text_group = vec![];
+
+        while let Some(node) = self.parse_next() {
+            match node {
+                Node::StyleDefinition(_) => {
+                    self.styles.push(node);
+                },
+                Node::BoxContainer {..} => {
+                    if !text_group.is_empty() {
+                        self.nodes.push(BoxContainer {
+                            styles: vec![],
+                            children: text_group.drain(..).collect(),
+                        })
+                    }
+                    self.nodes.push(node)
+                },
+                Node::Text(_) => {
+                    text_group.push(node);
+                },
+                Node::Whitespace(_) => {
+                    text_group.push(node);
+                },
+                Node::Tag{..} => {
+                    todo!()
+                }
+            }
+        }
+
+        if !text_group.is_empty() {
+            self.nodes.push(BoxContainer {
+                styles: vec![],
+                children: text_group.drain(..).collect(),
+            })
+        }
+
+        self.parsed = true;
 
         self
     }
@@ -143,6 +189,30 @@ impl Guard {
     }
 }
 
+// Utility
+impl<'a> FlexmlDocument<'a> {
+    pub fn page_width(&self) -> usize {
+        self.width
+    }
+
+    pub fn page_height(&self) -> usize {
+        self.height
+    }
+
+    pub fn pixels_per_inch(&self) -> usize {
+        self.ppi
+    }
+
+    pub fn max_nodes(&self) -> usize {
+        self.max_nodes
+    }
+
+    pub fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+}
+
+// Parser
 impl<'a> FlexmlDocument<'a> {
     /// Parse the next flexml node
     /// Call this method until None.
@@ -163,9 +233,7 @@ impl<'a> FlexmlDocument<'a> {
         // Top level container, so reset the depth_guard
         self.depth_guard.reset();
 
-        let root_style= self.root_style;
-
-        self.parse_content(&root_style)
+        self.parse_content()
     }
 
     fn parse_header(&mut self) -> Option<Node<'a>> {
@@ -192,7 +260,7 @@ impl<'a> FlexmlDocument<'a> {
     /// Parses content, text, box containers, etc.
     /// Every time this is called, we check the depth
     ///
-    fn parse_content(&mut self, parent_style: &StyleContext) -> Option<Node<'a>> {
+    fn parse_content(&mut self) -> Option<Node<'a>> {
         while let Some((tok, slice)) = self.take() {
             return match tok {
                 TagContainer => {
@@ -221,7 +289,7 @@ impl<'a> FlexmlDocument<'a> {
                         }
                         continue;
                     } else {
-                        Some(self.parse_box_container(parent_style))
+                        Some(self.parse_box_container())
                     };
                 }
 
@@ -395,7 +463,7 @@ impl<'a> FlexmlDocument<'a> {
     /// Box containers can optionally have styles
     /// Box containers always have whitespace or newlines to start the children
     /// content parsing
-    fn parse_box_container(&mut self, parent_style: &StyleContext) -> Node<'a> {
+    fn parse_box_container(&mut self) -> Node<'a> {
         // We ignore forwarders on inline styles
         // Forwarders only apply to style definitions
         let (styles, _forwarders) = self.parse_styles();
@@ -411,7 +479,7 @@ impl<'a> FlexmlDocument<'a> {
                         break;
                     }
                     _ => {
-                        if let Some(child) = self.parse_content(parent_style) {
+                        if let Some(child) = self.parse_content() {
                             children.push(child);
                         } else {
                             break;
@@ -436,9 +504,7 @@ impl<'a> FlexmlDocument<'a> {
             self.warn(self.lexer.span(), UnclosedBoxContainer);
         }
 
-        let style = self.style_registry.resolve_style(parent_style, &styles);
-
-        Node::BoxContainer {styles, style, children }
+        Node::BoxContainer {styles, children }
     }
 
     /// Styles always start with a named with alternating separators
@@ -479,7 +545,7 @@ impl<'a> FlexmlDocument<'a> {
     }
 }
 
-/// Utility type fn
+/// Parsing Utilities
 impl<'a> FlexmlDocument<'a> {
     /// Advances the lexer to the next valid token and returns it along with its matched input slice.
     /// Errors are ignored but sent off as warnings

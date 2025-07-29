@@ -1,5 +1,5 @@
-use crate::styles::context::{FontFamily, FontStyle, FontWeight, StyleContext, TextAlign, TextDecoration, TextTransform};
-use crate::styles::builtin::{apply_color, apply_dimension, apply_match_style, BuiltInStyle};
+use crate::styles::context::{FontFamily, FontStyle, StyleContext, TextAlign, TextDecoration, TextTransform};
+use crate::styles::builtin::{apply_color, apply_dimension, apply_float, apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue, UrlType};
 use crate::styles::style::StyleValue::{Forward};
 use crate::styles::style::StyleValueParser::{ColorParser, MatchParser, PositiveNumberParser, UrlParser};
@@ -37,7 +37,7 @@ pub static TEXT_FONT: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_text_size(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.font_size);
+    apply_float(value, &mut context.font_size);
 }
 
 pub static TEXT_SIZE: BuiltInStyle = BuiltInStyle {
@@ -70,20 +70,20 @@ pub static TEXT_STYLE: BuiltInStyle = BuiltInStyle {
 
 fn apply_text_weight(value: &StyleValue, context: &mut StyleContext) {
     apply_match_style(value, &mut context.font_weight, &[
-        FontWeight::Normal,
-        FontWeight::Bold,
-        FontWeight::Light,
-        FontWeight::Bolder,
-        FontWeight::Lighter,
-        FontWeight::W100,
-        FontWeight::W200,
-        FontWeight::W300,
-        FontWeight::W400,
-        FontWeight::W500,
-        FontWeight::W600,
-        FontWeight::W700,
-        FontWeight::W800,
-        FontWeight::W900,
+        100,
+        700,
+        300,
+        800,
+        300,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
     ])
 }
 
@@ -141,7 +141,7 @@ pub static TEXT_WORD_SPACING: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_text_line_height(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.line_height);
+    apply_float(value, &mut context.line_height);
 }
 
 pub static TEXT_LINE_HEIGHT: BuiltInStyle = BuiltInStyle {

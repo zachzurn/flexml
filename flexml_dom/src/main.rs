@@ -1,4 +1,6 @@
-use crate::document::document::FlexmlDocument;
+extern crate core;
+
+use crate::document::parser::FlexmlDocument;
 
 mod styles;
 mod strings;

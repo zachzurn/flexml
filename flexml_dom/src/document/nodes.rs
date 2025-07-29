@@ -21,7 +21,6 @@ pub enum Node<'a> {
     // Box with children
     BoxContainer {
         styles: Vec<AtomicStyle>,
-        style: StyleContext,
         children: Vec<Node<'a>>,
     },
 }

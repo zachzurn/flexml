@@ -1,4 +1,4 @@
-use super::document::{FlexmlDocument};
+use super::parser::{FlexmlDocument};
 
 #[test]
 fn empty_warning() {
