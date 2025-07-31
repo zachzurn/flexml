@@ -1,15 +1,30 @@
 use std::ops::Range;
-use parley::{Alignment, AlignmentOptions, Brush, FontWeight, InlineBox, PositionedLayoutItem, RangedBuilder, StyleProperty};
-use parley::StyleProperty::FontSize;
+use parley::{Alignment, AlignmentOptions, Brush, FontWeight, InlineBox, LineHeight, PositionedLayoutItem, RangedBuilder, StyleProperty};
 use taffy::{LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Size};
 use crate::layout::tree::{LayoutNodeKind, LayoutTree};
-use crate::styles::context::StyleContext;
+use crate::styles::context::{FontStyle, StyleContext};
 
 fn parley_style<'a>(style: &StyleContext) -> Vec<StyleProperty<'a, [u8; 4]>> {
-    let mut styles = vec![];
-    //TODO fill out the rest of the styles here
-    styles.push(FontSize(style.font_size));
-    styles
+    println!("parley_style: {:?}", style.font_size);
+
+    let em = style.resolved_font_size;
+    let rem = style.resolved_root_font_size;
+    let dpi = style.dpi;
+
+    let font_style = match style.font_style {
+        FontStyle::Normal => parley::FontStyle::Normal,
+        FontStyle::Italic => parley::FontStyle::Italic,
+        FontStyle::Oblique => parley::FontStyle::Oblique(None)
+    };
+
+    vec![
+        StyleProperty::FontSize(style.resolved_font_size),
+        StyleProperty::LineHeight(LineHeight::Absolute(style.line_height.to_pixels(em, rem, em, dpi))),
+        StyleProperty::LetterSpacing(style.letter_spacing.to_pixels(em, rem, em, dpi)),
+        StyleProperty::FontWeight(FontWeight::new(style.font_weight as f32)),
+        StyleProperty::FontStyle(font_style),
+        // TODO add other styles
+    ]
 }
 
 enum InlineItemBuilder<'a> {
@@ -67,11 +82,18 @@ pub fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inputs: La
     let mut layout = builder.build(&i_text);
 
     let available_width = Some(inputs.available_space.width.unwrap_or(f32::INFINITY));
+
+    println!("text {:?}", i_text);
+
+    println!("available width: {:?}", available_width);
+
     layout.break_all_lines(available_width);
     layout.align(available_width, Alignment::Start, AlignmentOptions::default());
 
     let total_width = layout.width();
     let total_height = layout.height();
+
+    println!("Total width: {}, height: {}", total_width, total_height);
 
     let node_mut = tree.node_from_id_mut(node_id);
     node_mut.inline_layout = Some(layout);

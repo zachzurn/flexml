@@ -37,7 +37,7 @@ pub static TEXT_FONT: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_text_size(value: &StyleValue, context: &mut StyleContext) {
-    apply_float(value, &mut context.font_size);
+    apply_dimension(value, &mut context.font_size);
 }
 
 pub static TEXT_SIZE: BuiltInStyle = BuiltInStyle {
@@ -141,7 +141,7 @@ pub static TEXT_WORD_SPACING: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_text_line_height(value: &StyleValue, context: &mut StyleContext) {
-    apply_float(value, &mut context.line_height);
+    apply_dimension(value, &mut context.line_height);
 }
 
 pub static TEXT_LINE_HEIGHT: BuiltInStyle = BuiltInStyle {

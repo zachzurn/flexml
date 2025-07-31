@@ -11,6 +11,7 @@ pub mod border;
 pub mod bg;
 pub mod text;
 pub mod dimensions;
+pub mod page;
 
 pub struct BuiltInStyle {
     pub name: &'static str,
@@ -65,15 +66,9 @@ fn apply_dimension(
     context_field: &mut Dimension,
 ) {
     match value {
-        StyleValue::Number(number) => {
-            *context_field = Dimension::Px(*number as i32);
-        },
-        StyleValue::NegativeNumber(number) => {
-            *context_field = Dimension::Px(0 - *number as i32);
-        },
-        StyleValue::Percent(percent) => {
-            *context_field = Dimension::Percent(percent.get())
-        }
+        StyleValue::PositiveNumber(dimension) |
+        StyleValue::NegativeNumber(dimension)
+        => *context_field = dimension.clone(),
         _ => return
     }
 }
@@ -81,19 +76,13 @@ fn apply_dimension(
 
 fn apply_length(
     value: &StyleValue,
-    context_field: &mut Length,
-    variants: &[Length],
+    context_field: &mut Dimension,
+    variants: &[Dimension],
 ) {
     match value {
-        StyleValue::Number(number) => {
-            *context_field = Length::Px(*number as i32);
-        },
-        StyleValue::NegativeNumber(number) => {
-            *context_field = Length::Px(0 - *number as i32);
-        },
-        StyleValue::Percent(percent) => {
-            *context_field = Length::Percent(percent.get())
-        }
+        StyleValue::PositiveNumber(dimension) |
+        StyleValue::NegativeNumber(dimension)
+        => *context_field = dimension.clone(),
         StyleValue::Match(i) => {
             if let Some(val) = variants.get(*i as usize) {
                 *context_field = *val;
@@ -103,9 +92,13 @@ fn apply_length(
     }
 }
 
-
+pub static ROOT_STYLE_NAME: &str = "PAGE";
 
 pub static DEFAULT_BUILTINS : &[&'static BuiltInStyle] = &[
+    &page::PAGE_HEIGHT,
+    &page::PAGE_WIDTH,
+    &page::PAGE_DPI,
+
     &display::DISPLAY,
     &white_space::WHITE_SPACE,
     &opacity::OPACITY,

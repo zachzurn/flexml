@@ -19,10 +19,6 @@ pub struct FlexmlDocument<'a> {
     pub(crate) styles: Vec<Node<'a>>,
     pub(crate) name: String,
 
-    width: usize,
-    height: usize,
-    ppi: usize,
-
     parsed: bool,
     lexer: Lexer<'a, Token>,
     peeked: Option<(Token, &'a str)>,
@@ -55,10 +51,6 @@ impl<'a> FlexmlDocument<'a> {
             nodes: Vec::new(),
             styles: Vec::new(),
             name: "FlexmlDocument".to_string(),
-            width: 816,
-            height: 1056,
-            ppi: 96,
-
             lexer: Token::lexer(input),
             peeked: None,
             header_parsed: false,
@@ -76,19 +68,6 @@ impl<'a> FlexmlDocument<'a> {
 
         parser
     }
-
-    pub fn with_ppi(mut self, ppi: usize) -> Self {
-        self.ppi = ppi;
-        self
-    }
-
-    pub fn with_page_size(mut self, width: usize, height: usize) -> Self {
-        self.width = width;
-        self.height = height;
-        self
-    }
-
-
 
     pub fn with_max_depth(mut self, max_depth: usize) -> Self {
         self.max_depth = max_depth;
@@ -113,6 +92,9 @@ impl<'a> FlexmlDocument<'a> {
         while let Some(node) = self.parse_next() {
             self.nodes.push(node);
         }
+
+        // This ensures that root styles are applied properly
+        self.style_registry.resolve_root_style(&mut self.root_style);
 
         self.parsed = true;
         self
@@ -191,18 +173,6 @@ impl Guard {
 
 // Utility
 impl<'a> FlexmlDocument<'a> {
-    pub fn page_width(&self) -> usize {
-        self.width
-    }
-
-    pub fn page_height(&self) -> usize {
-        self.height
-    }
-
-    pub fn pixels_per_inch(&self) -> usize {
-        self.ppi
-    }
-
     pub fn max_nodes(&self) -> usize {
         self.max_nodes
     }

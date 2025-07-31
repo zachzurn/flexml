@@ -2,6 +2,7 @@ use std::fs::FileType;
 use lazy_static::lazy_static;
 use url::Url;
 use crate::strings::{Chars, ValueErrors, ValueHelp};
+use crate::styles::context::Dimension;
 use crate::styles::style::StyleValue::{FontUrl, ImageUrl};
 
 #[derive(PartialEq, Clone, Debug)]
@@ -64,12 +65,16 @@ pub enum StyleValue {
     /// Forward is a special style value
     /// only used in built ins as a proxy for Empty
     Forward,
-    Number(u16),
-    NegativeNumber(u16),
-    Percent(PercentFloat),
+
+    /// Parse a positive dimension
+    NegativeNumber(Dimension),
+    PositiveNumber(Dimension),
+
     Float(f32),
+
     FontUrl(String),
     ImageUrl(String),
+
     Match(u8),
     Color(RGBA),
     Font(FontId),
@@ -110,6 +115,36 @@ lazy_static! {
         .expect("Failed to parse BASE_URL URL at compile time. This should be a valid URL.");
 }
 
+pub enum DimensionKind {
+    Px,
+    Millimeters,
+    Inches,
+    Em,
+    Rem,
+    Percent,
+    Point,
+}
+
+static DIMENSION_STR: &[&str; 7] = &[
+    Chars::PX,
+    Chars::PERCENT,
+    Chars::PT,
+    Chars::IN,
+    Chars::MM,
+    Chars::REM,
+    Chars::EM
+];
+
+static DIMENSION_KIND: &[DimensionKind; 7] = &[
+    DimensionKind::Px,
+    DimensionKind::Percent,
+    DimensionKind::Point,
+    DimensionKind::Inches,
+    DimensionKind::Millimeters,
+    DimensionKind::Rem,
+    DimensionKind::Em,
+];
+
 impl StyleValueParser {
 
     pub fn parse(&self, s: &str) -> StyleValue {
@@ -142,59 +177,80 @@ impl StyleValueParser {
 
     }
 
-    fn parse_percent(s: &str) -> StyleValue {
-        return if let Ok(float) = s.parse::<f32>() {
-            if float < 0.0 {
-                return StyleValue::Invalid(ValueErrors::NEGATIVE_PERCENT, ValueHelp::PERCENT);
-            }
-            StyleValue::Percent(PercentFloat(float))
-        } else {
-            StyleValue::Invalid(ValueErrors::PERCENT, ValueHelp::PERCENT)
-        }
-    }
-
     // Parses a whole number
     fn parse_number(s: &str) -> StyleValue {
-        let negative = s.starts_with('-');
-        let number = s.trim_start_matches('-');
+        // precheck empty so we know empty value later on is invalid input
+        if s.is_empty() { return StyleValue::Empty }
 
-        if number.ends_with(Chars::PERCENT) {
-            return Self::parse_percent(number.trim_end_matches(Chars::PERCENT));
+        let value = Self::parse_dimension_number(s);
+
+        match value {
+            // Any number or invalid get passed through as is
+            StyleValue::PositiveNumber(_) |
+            StyleValue::NegativeNumber(_) |
+            StyleValue::Invalid(..) => value,
+
+            // Empty or any other value in this case indicates a bad format, so we convert to invalid
+            _ => StyleValue::Invalid(ValueErrors::NUMBER, ValueHelp::POSITIVE_NUMBER),
         }
-
-        if number.is_empty() { return StyleValue::Empty }
-
-        let mut digits = 0;
-
-        for char in number.chars() {
-            if char.is_ascii_digit() { digits += 1 }
-            else { break }
-        }
-
-        if digits == 0 {
-            return StyleValue::Invalid(ValueErrors::NUMBER, ValueHelp::NUMBER);
-        }
-        else {
-            return if let Ok(number) = &number[0..digits].parse::<u16>() {
-                if negative { StyleValue::NegativeNumber(*number) } else { StyleValue::Number(*number) }
-            } else {
-                StyleValue::Invalid(ValueErrors::NUMBER, ValueHelp::NUMBER)
-            }
-        }
-
-
     }
 
     fn parse_positive_number(s: &str) -> StyleValue {
-        let value = Self::parse_number(s);
+        // precheck empty so we know empty value later on is invalid input
+        if s.is_empty() { return StyleValue::Empty }
+
+        let value = Self::parse_dimension_number(s);
 
         match value {
-            StyleValue::Number(_) => value,
-            StyleValue::Percent(_) => value,
+            // Positive number and invalid get passed through as is
+            StyleValue::PositiveNumber(_) |
+            StyleValue::Invalid(..) => value,
+
+            // Negative numbers are invalid
             StyleValue::NegativeNumber(_) => StyleValue::Invalid(ValueErrors::NEGATIVE_NUMBER, ValueHelp::POSITIVE_NUMBER),
-            StyleValue::Empty => StyleValue::Empty,
+
+            // Empty or any other value in this case indicates a bad format, so we convert to invalid
             _ => StyleValue::Invalid(ValueErrors::NUMBER, ValueHelp::POSITIVE_NUMBER),
         }
+    }
+
+    fn parse_dimension_number(input: &str) -> StyleValue {
+        let input = input.to_ascii_lowercase();
+
+        for (i, unit) in DIMENSION_STR.iter().enumerate() {
+            if input.ends_with(unit) {
+                let number_part = &input[..input.len() - unit.len()];
+
+                return if let Ok(value) = number_part.parse::<f32>() {
+                    let dim = match DIMENSION_KIND[i] {
+                        DimensionKind::Rem => Dimension::Rem(value),
+                        DimensionKind::Millimeters => Dimension::Mm(value),
+                        DimensionKind::Inches => Dimension::Inch(value),
+                        DimensionKind::Point => Dimension::Point(value),
+                        DimensionKind::Em => Dimension::Em(value),
+                        DimensionKind::Px => Dimension::Px(value),
+                        DimensionKind::Percent => {
+                            if value < 0.0 {
+                                // Percentages cannot be negative
+                                return StyleValue::Invalid(ValueErrors::NEGATIVE_PERCENT, ValueHelp::PERCENT);
+                            } else {
+                                Dimension::Percent(value)
+                            }
+                        },
+                    };
+
+                    return if value < 0.0 {
+                        StyleValue::NegativeNumber(dim)
+                    } else {
+                        StyleValue::PositiveNumber(dim)
+                    }
+                } else {
+                    StyleValue::Empty // Indicates invalid
+                }
+            }
+        }
+
+        StyleValue::Empty
     }
 
     fn parse_url(kind: &UrlType, s: &str) -> StyleValue {

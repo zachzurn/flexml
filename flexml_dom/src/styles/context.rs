@@ -1,16 +1,69 @@
 use bitflags::bitflags;
-use logos::Source;
 use paste::paste;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+const STANDARD_DPI: f32 = 1.0 / 96.0;
+const POINT_DPI: f32 = 1.0 / 72.0;
+const MM_PER_INCH: f32 = 25.4;
+const INCHES_PER_MM: f32 = 1.0 / MM_PER_INCH;
+
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Dimension {
-    Px(i32),
+    #[default]
+    Auto,
+    Content,
+    Px(f32),
     Percent(f32),
+    Point(f32),
+    Inch(f32),
+    Mm(f32),
+    Em(f32),
+    Rem(f32),
+    Resolved(f32)
 }
 
-impl Default for Dimension {
-    fn default() -> Dimension {
-        Dimension::Px(0)
+impl Dimension {
+    /// Calculate actual pixel sizes
+    /// Auto and content will always produce 0
+    /// If you are checking for auto or content
+    /// you should match against that first
+    pub fn to_pixels(&self, dim_px: f32, rem_px: f32, em_px: f32, dpi: f32) -> f32 {
+        match self {
+            Dimension::Percent(pct) => dim_px * pct,
+            Dimension::Point(pt) => pt * (dpi * POINT_DPI),
+            Dimension::Inch(inch) => inch * dpi,
+            Dimension::Mm(mm) => mm * (dpi * INCHES_PER_MM),
+            Dimension::Px(px) => px * (dpi * STANDARD_DPI),
+            Dimension::Em(em) => em * em_px,
+            Dimension::Rem(rem) => rem * rem_px,
+            Dimension::Auto => 0f32,
+            Dimension::Content => 0f32,
+            Dimension::Resolved(resolved_value) => *resolved_value,
+        }
+    }
+
+
+
+    pub fn is_auto(&self) -> bool {
+        match self {
+            Dimension::Auto => true,
+            _ => false
+        }
+    }
+
+    pub fn is_content(&self) -> bool {
+        match self {
+            Dimension::Content => true,
+            _ => false
+        }
+    }
+
+    /// Does the dimension have a non specified dimension
+    /// like auto or content
+    pub fn is_none(&self) -> bool {
+        match self {
+            Dimension::Auto | Dimension::Content => true,
+            _ => false
+        }
     }
 }
 
@@ -38,6 +91,8 @@ pub enum Length {
     Px(i32),
     Percent(f32),
 }
+
+
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Display {
@@ -202,68 +257,71 @@ pub struct Color(pub u8, pub u8, pub u8, pub u8); // RGBA
 bitflags! {
     #[derive(Default, Clone, Copy, Debug, PartialEq)]
     pub struct StyleBits: u64 {
-        const DISPLAY              = 1 << 0;
-        const WHITE_SPACE          = 1 << 1;
-        const OPACITY              = 1 << 2;
 
-        const MARGIN               = 1 << 3;
-        const MARGIN_TOP          = 1 << 4;
-        const MARGIN_BOTTOM       = 1 << 5;
-        const MARGIN_LEFT         = 1 << 6;
-        const MARGIN_RIGHT        = 1 << 7;
+        const IS_ROOT              = 1 << 0;
 
-        const PADDING              = 1 << 8;
-        const PADDING_TOP         = 1 << 9;
-        const PADDING_BOTTOM      = 1 << 10;
-        const PADDING_LEFT        = 1 << 11;
-        const PADDING_RIGHT       = 1 << 12;
+        const DISPLAY              = 1 << 1;
+        const WHITE_SPACE          = 1 << 2;
+        const OPACITY              = 1 << 3;
 
-        const ALIGN_CONTENT        = 1 << 13;
-        const ALIGN_ITEMS          = 1 << 14;
-        const ALIGN_SELF           = 1 << 15;
-        const GAP                  = 1 << 16;
-        const COLUMN_GAP           = 1 << 17;
-        const ROW_GAP              = 1 << 18;
-        const FLEX_BASIS           = 1 << 19;
-        const FLEX_DIRECTION       = 1 << 20;
-        const FLEX_GROW            = 1 << 21;
-        const FLEX_SHRINK          = 1 << 22;
-        const JUSTIFY_CONTENT      = 1 << 23;
-        const FLEX_WRAP            = 1 << 24;
+        const MARGIN               = 1 << 4;
+        const MARGIN_TOP          = 1 << 5;
+        const MARGIN_BOTTOM       = 1 << 6;
+        const MARGIN_LEFT         = 1 << 7;
+        const MARGIN_RIGHT        = 1 << 8;
 
-        const WIDTH                = 1 << 25;
-        const MAX_WIDTH            = 1 << 26;
-        const MIN_WIDTH            = 1 << 27;
-        const HEIGHT               = 1 << 28;
-        const MAX_HEIGHT           = 1 << 29;
-        const MIN_HEIGHT           = 1 << 30;
+        const PADDING              = 1 << 9;
+        const PADDING_TOP         = 1 << 10;
+        const PADDING_BOTTOM      = 1 << 11;
+        const PADDING_LEFT        = 1 << 12;
+        const PADDING_RIGHT       = 1 << 13;
 
-        const TEXT_ALIGN           = 1 << 31;
-        const COLOR                = 1 << 32;
-        const TEXT_DECORATION      = 1 << 33;
-        const FONT_FAMILY          = 1 << 34;
-        const FONT_SIZE            = 1 << 35;
-        const FONT_STYLE           = 1 << 36;
-        const TEXT_TRANSFORM       = 1 << 37;
-        const LETTER_SPACING       = 1 << 38;
-        const LINE_HEIGHT          = 1 << 39;
-        const FONT_WEIGHT          = 1 << 40;
-        const WORD_SPACING         = 1 << 41;
+        const ALIGN_CONTENT        = 1 << 14;
+        const ALIGN_ITEMS          = 1 << 15;
+        const ALIGN_SELF           = 1 << 16;
+        const GAP                  = 1 << 17;
+        const COLUMN_GAP           = 1 << 18;
+        const ROW_GAP              = 1 << 19;
+        const FLEX_BASIS           = 1 << 20;
+        const FLEX_DIRECTION       = 1 << 21;
+        const FLEX_GROW            = 1 << 22;
+        const FLEX_SHRINK          = 1 << 23;
+        const JUSTIFY_CONTENT      = 1 << 24;
+        const FLEX_WRAP            = 1 << 25;
 
-        const BG_COLOR             = 1 << 41;
-        const BG_IMAGE             = 1 << 43;
-        const BG_POSITION          = 1 << 44;
-        const BG_REPEAT            = 1 << 45;
-        const BG_SIZE              = 1 << 46;
+        const WIDTH                = 1 << 26;
+        const MAX_WIDTH            = 1 << 27;
+        const MIN_WIDTH            = 1 << 28;
+        const HEIGHT               = 1 << 29;
+        const MAX_HEIGHT           = 1 << 30;
+        const MIN_HEIGHT           = 1 << 31;
 
-        const BORDER_RADIUS        = 1 << 47;
-        const BORDER_TOP_LEFT      = 1 << 48;
-        const BORDER_TOP_RIGHT     = 1 << 49;
-        const BORDER_BOTTOM_LEFT   = 1 << 50;
-        const BORDER_BOTTOM_RIGHT  = 1 << 51;
-        const BORDER_COLOR         = 1 << 52;
-        const BORDER_STYLE         = 1 << 53;
-        const BORDER_WIDTH         = 1 << 54;
+        const TEXT_ALIGN           = 1 << 32;
+        const COLOR                = 1 << 33;
+        const TEXT_DECORATION      = 1 << 34;
+        const FONT_FAMILY          = 1 << 35;
+        const FONT_SIZE            = 1 << 36;
+        const FONT_STYLE           = 1 << 37;
+        const TEXT_TRANSFORM       = 1 << 38;
+        const LETTER_SPACING       = 1 << 39;
+        const LINE_HEIGHT          = 1 << 40;
+        const FONT_WEIGHT          = 1 << 41;
+        const WORD_SPACING         = 1 << 42;
+
+        const BG_COLOR             = 1 << 43;
+        const BG_IMAGE             = 1 << 44;
+        const BG_POSITION          = 1 << 45;
+        const BG_REPEAT            = 1 << 46;
+        const BG_SIZE              = 1 << 47;
+
+        const BORDER_RADIUS        = 1 << 48;
+        const BORDER_TOP_LEFT      = 1 << 49;
+        const BORDER_TOP_RIGHT     = 1 << 50;
+        const BORDER_BOTTOM_LEFT   = 1 << 51;
+        const BORDER_BOTTOM_RIGHT  = 1 << 52;
+        const BORDER_COLOR         = 1 << 53;
+        const BORDER_STYLE         = 1 << 54;
+        const BORDER_WIDTH         = 1 << 55;
     }
 }
 
@@ -285,6 +343,8 @@ static INHERITABLE_STYLES: &[StyleBits] = &[
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct StyleContext {
     pub bits: StyleBits,
+
+    pub dpi: f32,
 
     pub display: Display,
     pub white_space: WhiteSpace,
@@ -309,7 +369,7 @@ pub struct StyleContext {
     pub column_gap: Dimension,
     pub row_gap: Dimension,
 
-    pub flex_basis: Length,
+    pub flex_basis: Dimension,
     pub flex_direction: FlexDirection,
     pub flex_grow: f32,
     pub flex_shrink: f32,
@@ -327,11 +387,13 @@ pub struct StyleContext {
     pub color: Color,
     pub text_decoration: TextDecoration,
     pub font_family: FontFamily,
-    pub font_size: f32,
+    pub font_size: Dimension,
+    pub resolved_font_size: f32,
+    pub resolved_root_font_size: f32,
     pub font_style: FontStyle,
     pub text_transform: TextTransform,
     pub letter_spacing: Dimension,
-    pub line_height: f32,
+    pub line_height: Dimension,
     pub font_weight: u16,
     pub word_spacing: Dimension,
 
@@ -340,7 +402,6 @@ pub struct StyleContext {
     pub bg_position: BgPosition,
     pub bg_repeat: BgRepeat,
     pub bg_size: BgSize,
-
 
     pub border_radius: Dimension,
     pub border_top_left_radius: Dimension,
@@ -407,11 +468,63 @@ impl StyleContext {
                 _ => {}
             }
         }
+
+        // Calculate resolved font sizes
+        self.resolved_font_size = self.font_size.to_pixels(
+            parent.resolved_font_size,       // for Percent and Em
+            parent.resolved_root_font_size,  // for Rem
+            parent.resolved_font_size,       // for Em again
+            parent.dpi,
+        );
+
+        // Propagate root font size (unchanged from parent)
+        self.resolved_root_font_size = parent.resolved_root_font_size;
     }
 }
 
 
 impl StyleContext {
+
+    pub fn set_as_root(&mut self) {
+        self.bits.insert(StyleBits::IS_ROOT);
+    }
+
+    pub fn is_root(&self) -> bool {
+        self.bits.contains(StyleBits::IS_ROOT)
+    }
+
+    pub fn default_font_size_pixels() -> f32 {
+        16.0f32
+    }
+
+    pub fn min_font_size_pixels() -> f32 {
+        1.0f32
+    }
+
+    pub fn default_page_width_resolved() -> f32 {
+        1920.0f32
+    }
+
+    pub fn min_page_width_resolved() -> f32 {
+        50.0f32
+    }
+
+    pub fn default_page_height_resolved() -> f32 {
+        1080.0f32
+    }
+
+    pub fn min_page_height_resolved() -> f32 {
+        50.0f32
+    }
+
+    pub fn default_dpi() -> f32 {
+        72.0f32
+    }
+
+    pub fn min_dpi() -> f32 {
+        25.0f32
+    }
+
     style_field!(display: Display, StyleBits::DISPLAY, Display::Block);
     style_field!(white_space: WhiteSpace, StyleBits::WHITE_SPACE, WhiteSpace::Normal);
     style_field!(opacity: f32, StyleBits::OPACITY, 1.0);
@@ -435,7 +548,7 @@ impl StyleContext {
     style_field!(column_gap: Dimension, StyleBits::COLUMN_GAP, Dimension::default());
     style_field!(row_gap: Dimension, StyleBits::ROW_GAP, Dimension::default());
 
-    style_field!(flex_basis: Length, StyleBits::FLEX_BASIS, Length::Auto);
+    style_field!(flex_basis: Dimension, StyleBits::FLEX_BASIS, Dimension::Auto);
     style_field!(flex_direction: FlexDirection, StyleBits::FLEX_DIRECTION, FlexDirection::Row);
     style_field!(flex_grow: f32, StyleBits::FLEX_GROW, 0.0);
     style_field!(flex_shrink: f32, StyleBits::FLEX_SHRINK, 0.0);
@@ -453,11 +566,11 @@ impl StyleContext {
     style_field!(color: Color, StyleBits::COLOR, Color(0, 0, 0, 255));
     style_field!(text_decoration: TextDecoration, StyleBits::TEXT_DECORATION, TextDecoration::None);
     style_field!(font_family: FontFamily, StyleBits::FONT_FAMILY, FontFamily::Default);
-    style_field!(font_size: f32, StyleBits::FONT_SIZE, 12.0);
+    style_field!(font_size: Dimension, StyleBits::FONT_SIZE, Dimension::Resolved(16.0f32));
     style_field!(font_style: FontStyle, StyleBits::FONT_STYLE, FontStyle::Normal);
     style_field!(text_transform: TextTransform, StyleBits::TEXT_TRANSFORM, TextTransform::None);
-    style_field!(letter_spacing: Dimension, StyleBits::LETTER_SPACING, Dimension::default());
-    style_field!(line_height: f32, StyleBits::LINE_HEIGHT, 15.0);
+    style_field!(letter_spacing: Dimension, StyleBits::LETTER_SPACING, Dimension::Resolved(0.0f32));
+    style_field!(line_height: Dimension, StyleBits::LINE_HEIGHT, Dimension::em(1f32));
     style_field!(font_weight: u16, StyleBits::FONT_WEIGHT, 300);
     style_field!(word_spacing: Dimension, StyleBits::WORD_SPACING, Dimension::default());
 
@@ -481,6 +594,7 @@ impl StyleContext {
 impl Default for StyleContext {
     fn default() -> Self {
         Self {
+            dpi: 72.0f32,
             bits: Default::default(),
             display: Default::default(),
             white_space: Default::default(),
@@ -517,7 +631,9 @@ impl Default for StyleContext {
             color: Color(0,0,0,255),
             text_decoration: Default::default(),
             font_family: FontFamily::SansSerif,
-            font_size: Default::default(),
+            font_size: Dimension::Px(StyleContext::default_font_size_pixels()),
+            resolved_font_size: 0.0f32,
+            resolved_root_font_size: 0.0f32,
             font_style: Default::default(),
             text_transform: Default::default(),
             letter_spacing: Default::default(),

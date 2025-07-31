@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
+use taffy::Style;
 use url::Url;
 use crate::strings::{Chars, ValueErrors, ValueHelp};
-use crate::styles::builtin::{BuiltInStyle, DEFAULT_BUILTINS};
-use crate::styles::context::StyleContext;
+use crate::styles::builtin::{BuiltInStyle, DEFAULT_BUILTINS, ROOT_STYLE_NAME};
+use crate::styles::context::{Dimension, StyleContext};
+use crate::styles::context::Dimension::Resolved;
 use crate::styles::style::StyleValue::{Font, Image};
 use super::style::{AtomicStyle, FileId, FontId, ImageId, RawStyle, StyleId, StyleValue, StyleValueParser, UrlType};
 
@@ -110,6 +112,44 @@ impl StyleRegistry {
 
             println!("{}: {}", builtin.name, description)
         }
+    }
+
+    /// Apply any root styles that were defined
+    pub fn resolve_root_style(&self, root: &mut StyleContext) {
+        // Mark the root style as being the root style
+        // This way atomic builtins that only appy to root
+        // will apply.
+        root.set_as_root();
+
+        if let Some(&id) = self.names_map.get(ROOT_STYLE_NAME) {
+            if let Some(styles) = self.definitions.get(&id){
+                for atomic in styles {
+                    (self.builtins[atomic.id].apply_style)(&atomic.value, root);
+                }
+            }
+        }
+
+        // We need to ensure the fundamental dimensions are sound
+
+        let default_font_size = StyleContext::default_font_size_pixels();
+        let min_font_size = StyleContext::min_font_size_pixels();
+
+        let default_width = StyleContext::default_page_width_resolved();
+        let min_width = StyleContext::min_page_width_resolved();
+
+        let default_height = StyleContext::default_page_height_resolved();
+        let min_height = StyleContext::min_page_height_resolved();
+
+        let min_dpi = StyleContext::min_dpi();
+
+        //Ensure sane values
+        root.dpi = min_dpi.max(root.dpi).round();
+        root.width = Resolved(min_width.max(root.width.to_pixels(default_width, default_font_size,default_font_size,root.dpi)).round());
+        root.height = Resolved(min_height.max(root.height.to_pixels(default_height, default_font_size,default_font_size,root.dpi)).round());
+
+        // Set resolved font sizes. These are needed for dimension calculations involving rem or em
+        root.resolved_font_size = min_font_size.max(root.font_size.to_pixels(default_font_size, default_font_size, default_font_size, root.dpi));
+        root.resolved_root_font_size = root.resolved_font_size;
     }
 
     pub fn resolve_style(&self, parent: &StyleContext, styles: &[AtomicStyle]) -> StyleContext {

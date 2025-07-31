@@ -28,6 +28,12 @@ pub struct Chars;
 
 impl Chars {
     pub const PERCENT: &'static str = "%";
+    pub const PX: &'static str = "px";
+    pub const IN: &'static str = "in";
+    pub const MM: &'static str = "mm";
+    pub const EM: &'static str = "em";
+    pub const REM: &'static str = "rem";
+    pub const PT: &'static str = "pt";
     pub const HEX: &'static str = "#";
     pub const FORWARD: &'static str = ">";
 }

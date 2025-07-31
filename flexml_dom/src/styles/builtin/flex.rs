@@ -1,4 +1,4 @@
-use crate::styles::context::{AlignContent, AlignItems, AlignSelf, FlexDirection, FlexWrap, JustifyContent, Length, StyleContext};
+use crate::styles::context::{AlignContent, AlignItems, AlignSelf, Dimension, FlexDirection, FlexWrap, JustifyContent, Length, StyleContext};
 use crate::styles::builtin::{apply_dimension, apply_float, apply_length, apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue};
 use crate::styles::style::StyleValueParser::{FloatParser, MatchOrFloatParser, MatchParser, NumberParser};
@@ -59,8 +59,8 @@ pub static FLEX_DIRECTION: BuiltInStyle = BuiltInStyle {
 
 fn apply_flex_basis(value: &StyleValue, context: &mut StyleContext) {
     apply_length(value, &mut context.flex_basis, &[
-        Length::Auto,
-        Length::Content
+        Dimension::Auto,
+        Dimension::Content
     ])
 }
 

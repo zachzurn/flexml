@@ -1,40 +1,38 @@
 use crate::styles::context::{AlignContent, AlignItems, Dimension, Display, FlexDirection, FlexWrap, JustifyContent, Length, StyleContext};
 use std::default::Default;
 
-fn to_taffy_dimension(dim: Dimension) -> taffy::style::Dimension {
+fn to_taffy_dimension(rem_px: f32, em_px: f32, dpi: f32, dim: Dimension) -> taffy::style::Dimension {
+    if dim.is_none() { return taffy::style::Dimension::auto() }
+
     match dim {
-        Dimension::Px(px) => taffy::style::Dimension::length(px as f32),
         Dimension::Percent(pct) => taffy::style::Dimension::percent(pct),
+        _ => taffy::style::Dimension::length(dim.to_pixels(0.0f32, rem_px, em_px, dpi))
     }
 }
 
-fn to_taffy_lpa(dim: Dimension) -> taffy::style::LengthPercentageAuto {
+fn to_taffy_lpa(rem_px: f32, em_px: f32, dpi: f32, dim: Dimension) -> taffy::style::LengthPercentageAuto {
+    if dim.is_none() { return taffy::style::LengthPercentageAuto::auto() }
+
     match dim {
-        Dimension::Px(px) => taffy::style::LengthPercentageAuto::length(px as f32),
         Dimension::Percent(pct) => taffy::style::LengthPercentageAuto::percent(pct),
+        _ => taffy::style::LengthPercentageAuto::length(dim.to_pixels(0.0f32, rem_px, em_px, dpi))
     }
 }
 
-fn to_taffy_lp(dim: Dimension) -> taffy::style::LengthPercentage {
+fn to_taffy_lp(rem_px: f32, em_px: f32, dpi: f32, dim: Dimension) -> taffy::style::LengthPercentage {
+    // TODO test this, Not sure here
+    if dim.is_none() { return taffy::style::LengthPercentage::length(0.0f32) }
+
     match dim {
-        Dimension::Px(px) => taffy::style::LengthPercentage::length(px as f32),
         Dimension::Percent(pct) => taffy::style::LengthPercentage::percent(pct),
+        _ => taffy::style::LengthPercentage::length(dim.to_pixels(0.0f32, rem_px, em_px, dpi))
     }
 }
 
-fn to_taffy_size(w: Dimension, h: Dimension) -> taffy::Size<taffy::style::Dimension> {
+fn to_taffy_size(rem_px: f32, em_px: f32, dpi: f32, w: Dimension, h: Dimension) -> taffy::Size<taffy::style::Dimension> {
     taffy::Size{
-        width: to_taffy_dimension(w),
-        height: to_taffy_dimension(h),
-    }
-}
-
-fn to_taffy_length(length: Length) -> taffy::style::Dimension {
-    match length {
-        Length::Auto => taffy::style::Dimension::auto(),
-        Length::Content => taffy::style::Dimension::auto(),
-        Length::Px(px) => taffy::style::Dimension::length(px as f32),
-        Length::Percent(pct) => taffy::style::Dimension::percent(pct),
+        width: to_taffy_dimension(rem_px, em_px, dpi, w),
+        height: to_taffy_dimension(rem_px, em_px, dpi, h),
     }
 }
 
@@ -98,28 +96,33 @@ fn to_taffy_align_content(ac: AlignContent) -> Option<taffy::style::AlignContent
 }
 
 pub (super) fn style_context_to_taffy(style_context: &StyleContext) -> taffy::style::Style {
+
+    let dpi = style_context.dpi;
+    let rem = style_context.resolved_root_font_size;
+    let em = style_context.resolved_font_size;
+
     taffy::style::Style {
         display: to_taffy_display(style_context.display),
 
         margin: taffy::geometry::Rect {
-            left: to_taffy_lpa(style_context.margin_left),
-            right: to_taffy_lpa(style_context.margin_right),
-            top: to_taffy_lpa(style_context.margin_top),
-            bottom: to_taffy_lpa(style_context.margin_bottom),
+            left: to_taffy_lpa(rem, em, dpi, style_context.margin_left),
+            right: to_taffy_lpa(rem, em, dpi, style_context.margin_right),
+            top: to_taffy_lpa(rem, em, dpi, style_context.margin_top),
+            bottom: to_taffy_lpa(rem, em, dpi, style_context.margin_bottom),
         },
 
         padding: taffy::geometry::Rect {
-            left: to_taffy_lp(style_context.padding_left),
-            right: to_taffy_lp(style_context.padding_right),
-            top: to_taffy_lp(style_context.padding_top),
-            bottom: to_taffy_lp(style_context.padding_bottom),
+            left: to_taffy_lp(rem, em, dpi, style_context.padding_left),
+            right: to_taffy_lp(rem, em, dpi, style_context.padding_right),
+            top: to_taffy_lp(rem, em, dpi, style_context.padding_top),
+            bottom: to_taffy_lp(rem, em, dpi, style_context.padding_bottom),
         },
 
         border: taffy::geometry::Rect {
-            left: to_taffy_lp(style_context.border_width),  // assuming uniform border width
-            right: to_taffy_lp(style_context.border_width),
-            top: to_taffy_lp(style_context.border_width),
-            bottom: to_taffy_lp(style_context.border_width),
+            left: to_taffy_lp(rem, em, dpi, style_context.border_width),  // assuming uniform border width
+            right: to_taffy_lp(rem, em, dpi, style_context.border_width),
+            top: to_taffy_lp(rem, em, dpi, style_context.border_width),
+            bottom: to_taffy_lp(rem, em, dpi, style_context.border_width),
         },
 
         flex_direction: to_taffy_flex_direction(style_context.flex_direction),
@@ -133,11 +136,11 @@ pub (super) fn style_context_to_taffy(style_context: &StyleContext) -> taffy::st
 
         flex_grow: style_context.flex_grow,
         flex_shrink: style_context.flex_shrink,
-        flex_basis: to_taffy_length(style_context.flex_basis),
+        flex_basis: to_taffy_dimension(rem, em, dpi, style_context.flex_basis),
 
-        size: to_taffy_size(style_context.width, style_context.height),
-        min_size: to_taffy_size(style_context.min_width, style_context.min_height),
-        max_size: to_taffy_size(style_context.max_width, style_context.max_height),
+        size: to_taffy_size(rem, em, dpi, style_context.width, style_context.height),
+        min_size: to_taffy_size(rem, em, dpi, style_context.min_width, style_context.min_height),
+        max_size: to_taffy_size(rem, em, dpi, style_context.max_width, style_context.max_height),
 
         item_is_table: false,
         item_is_replaced: false,

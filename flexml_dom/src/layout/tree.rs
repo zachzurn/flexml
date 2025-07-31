@@ -51,8 +51,8 @@ pub(super)  struct LayoutNode {
     pub(super) text: Option<String>,
     pub(super) inline_layout: Option<parley::Layout<[u8; 4]>>,
     pub(crate) cache: Cache,
-    unrounded_layout: Layout,
-    final_layout: Layout,
+    pub(crate) unrounded_layout: Layout,
+    pub(crate) final_layout: Layout,
 }
 
 impl LayoutNode {
