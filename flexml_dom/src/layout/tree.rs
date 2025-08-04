@@ -1,5 +1,5 @@
 use taffy::util::print_tree;
-use taffy::{compute_block_layout, compute_cached_layout, compute_flexbox_layout,compute_root_layout, prelude::*, round_layout, Cache, CacheTree, LayoutOutput};
+use taffy::{compute_block_layout, compute_cached_layout, compute_flexbox_layout, compute_leaf_layout, compute_root_layout, prelude::*, round_layout, Cache, CacheTree, LayoutOutput};
 use crate::layout::FlexmlLayoutContext;
 use crate::layout::inline::{compute_inline_layout};
 use crate::layout::taffy_style::style_context_to_taffy;
@@ -253,7 +253,8 @@ impl RoundTree for LayoutTree {
 
 impl PrintTree for LayoutTree {
     fn get_debug_label(&self, node_id: NodeId) -> &'static str {
-        match self.node_from_id(node_id).kind {
+        let node = self.node_from_id(node_id);
+        match node.kind {
             LayoutNodeKind::Container => "Container",
             LayoutNodeKind::InlineContent => "Inline Content",
             LayoutNodeKind::Text => "Text",

@@ -125,8 +125,8 @@ fn render_fragment_group(scene: &mut Scene, context: &FlexmlLayoutContext, group
                     .draw(
                         Fill::NonZero,
                         glyph_run.glyphs.iter().map(|glyph| {
-                            let gx = cursor_x + glyph.x; // g.x may be 0.0, but could also have glyph-level offset
-                            let gy = cursor_y - glyph.y; // baseline usually positive; subtract glyph vertical offset
+                            let gx = cursor_x + glyph.x;
+                            let gy = cursor_y - glyph.y;
                             cursor_x += glyph.advance;
 
                             vello::Glyph {

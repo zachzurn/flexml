@@ -3,16 +3,15 @@ mod inline;
 mod taffy_style;
 pub mod fragments;
 
-use parley::{FontContext, LayoutContext, PositionedLayoutItem};
-use taffy::{AvailableSpace, NodeId, Size};
 use crate::document::nodes::Node;
 use crate::document::parser::FlexmlDocument;
-use crate::layout::fragments::{collect_fragments, Fragment, FragmentGroup, FragmentKind, GlyphRunFragment, Radius, Rect};
-use crate::layout::fragments::FragmentKind::ColorBackground;
+use crate::layout::fragments::{collect_fragments, Fragment, FragmentGroup, Radius, Rect};
 use crate::layout::tree::{LayoutNode, LayoutNodeKind, LayoutTree};
-use crate::styles::context::{Color, Display, StyleContext};
+use crate::styles::context::{Display, StyleContext};
 use crate::styles::style::AtomicStyle;
 use crate::styles::style_registry::StyleRegistry;
+use parley::{FontContext, LayoutContext};
+use taffy::{AvailableSpace, NodeId, Size};
 
 pub struct FlexmlPage {
     pub fragments: Vec<FragmentGroup>,

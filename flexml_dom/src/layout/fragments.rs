@@ -100,7 +100,6 @@ impl FragmentGroup {
 
 
 
-use std::fmt::{self, Write};
 use taffy::NodeId;
 use crate::layout::tree::{LayoutNode, LayoutNodeKind, LayoutTree};
 
@@ -129,9 +128,13 @@ impl FragmentGroup {
 
             match &fragment.kind {
                 FragmentKind::Text(glyph_run) => {
-                    println!("{}{}Text: ({:?} color, {:?} glyphs, advance {:.2}, size {:.1}, baseline {:.1})",
+                    println!("{}{}Text: {}:{}:{}:{} ({:?} color, {:?} glyphs, advance {:.2}, size {:.1}, baseline {:.1})",
                              child_indent,
                              frag_branch,
+                             fragment.bounds.x,
+                             fragment.bounds.y,
+                             fragment.bounds.width,
+                             fragment.bounds.height,
                              glyph_run.style.brush,
                              glyph_run.glyphs.len(),
                              glyph_run.advance,
@@ -205,77 +208,83 @@ fn container_style_fragments(container: &LayoutNode, offset_x: f32, offset_y: f3
 }
 
 
-pub(super) fn collect_fragments(tree: &LayoutTree, node_id: usize, offset_x: f32, offset_y: f32, out: &mut Vec<FragmentGroup>) {
+pub(super) fn collect_fragments(
+    tree: &LayoutTree,
+    node_id: usize,
+    offset_x: f32,
+    offset_y: f32,
+    out: &mut Vec<FragmentGroup>,
+) {
     let node = tree.node_from_id(NodeId::from(node_id));
     let node_children = node.children.clone();
 
+    if matches!(node.kind, LayoutNodeKind::InlineContent) {
+        if let Some(inline_layout) = &node.inline_layout {
+            for line in inline_layout.lines() {
+                let line_metrics = line.metrics();
+                for item in line.items() {
+                    match item {
+                        PositionedLayoutItem::GlyphRun(glyph_run) => {
+                            let x = glyph_run.offset();
+                            let y = line_metrics.offset + line_metrics.baseline - glyph_run.baseline();
+
+                            let fragment = Fragment {
+                                bounds: Rect {
+                                    x: offset_x + x,
+                                    y: offset_y + y,
+                                    width: glyph_run.advance(),
+                                    height: line_metrics.line_height,
+                                },
+                                kind: FragmentKind::Text(GlyphRunFragment {
+                                    glyphs: glyph_run.glyphs().collect(),
+                                    baseline: glyph_run.baseline(),
+                                    offset: glyph_run.offset(),
+                                    advance: glyph_run.advance(),
+                                    synthesis: glyph_run.run().synthesis(),
+                                    font_size: glyph_run.run().font_size(),
+                                    font: glyph_run.run().font().clone(),
+                                    normalized_coords: glyph_run.run().normalized_coords().to_vec(),
+                                    style: glyph_run.style().clone(),
+                                }),
+                            };
+
+                            out.push(FragmentGroup {
+                                bounds: fragment.bounds,
+                                fragments: vec![fragment],
+                                subgroups: vec![],
+                                splittable: false,
+                            });
+                        }
+
+                        PositionedLayoutItem::InlineBox(inline_box) => {
+                            collect_fragments(tree, inline_box.id as usize, offset_x + inline_box.x, offset_y + inline_box.y, out);
+                        }
+                    }
+                }
+            }
+        }
+
+        return;
+    }
+
     let mut group = FragmentGroup::new(Rect::new(
-        node.final_layout.location.x,
+        node.final_layout.location.x + offset_x,
         node.final_layout.location.y + offset_y,
         node.final_layout.size.width,
         node.final_layout.size.height,
     ));
 
-    match node.kind {
-        LayoutNodeKind::Container => {
-            if let Some(style_fragments) = container_style_fragments(node, offset_x, offset_y) {
-                group.fragments.extend(style_fragments);
-            }
+    if let LayoutNodeKind::Container = node.kind {
+        if let Some(style_fragments) = container_style_fragments(node, offset_x, offset_y) {
+            group.fragments.extend(style_fragments);
         }
-
-        LayoutNodeKind::InlineContent => {
-            if let Some(inline_layout) = &node.inline_layout {
-                let mut inline_y = group.bounds.y;
-
-                for line in inline_layout.lines() {
-                    let mut inline_x = group.bounds.x;
-                    let line_height = line.metrics().line_height;
-
-                    for item in line.items() {
-                        match item {
-                            PositionedLayoutItem::GlyphRun(glyph_run) => {
-                                let fragment = Fragment {
-                                    bounds: Rect {
-                                        x: inline_x,
-                                        y: inline_y,
-                                        width: glyph_run.advance(),
-                                        height: line_height,
-                                    },
-                                    kind: FragmentKind::Text(GlyphRunFragment {
-                                        glyphs: glyph_run.glyphs().collect(),
-                                        baseline: glyph_run.baseline(),
-                                        offset: glyph_run.offset(),
-                                        advance: glyph_run.advance(),
-                                        synthesis: glyph_run.run().synthesis(),
-                                        font_size: glyph_run.run().font_size(),
-                                        // Font is cheap to clone, see Peniko Blob
-                                        font: glyph_run.run().font().clone(),
-                                        normalized_coords: glyph_run.run().normalized_coords().to_vec(),
-                                        style: glyph_run.style().clone(),
-                                    }),
-                                };
-                                group.fragments.push(fragment);
-                                inline_x += glyph_run.advance();
-                            }
-
-                            PositionedLayoutItem::InlineBox(inline_box) => {
-                                collect_fragments(tree, inline_box.id as usize, inline_x, inline_y, &mut group.subgroups);
-                                inline_x += inline_box.width;
-                            }
-                        }
-                    }
-
-                    inline_y += line_height;
-                }
-            }
-        }
-
-        _ => {}
     }
 
     for child_id in node_children {
         collect_fragments(tree, child_id, offset_x, offset_y, &mut group.subgroups);
     }
 
-    out.push(group);
+    if !group.fragments.is_empty() || !group.subgroups.is_empty() {
+        out.push(group);
+    }
 }

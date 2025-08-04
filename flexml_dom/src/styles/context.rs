@@ -64,17 +64,6 @@ pub enum Image {
     UserDefined(usize),
 }
 
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub enum Length {
-    #[default]
-    Auto,
-    Content,
-    Px(i32),
-    Percent(f32),
-}
-
-
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Display {
     #[default]

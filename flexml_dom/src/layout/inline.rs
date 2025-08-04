@@ -1,12 +1,10 @@
 use std::ops::Range;
 use parley::{Alignment, AlignmentOptions, FontWeight, InlineBox, LineHeight, StyleProperty};
-use taffy::{LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Size};
+use taffy::{compute_leaf_layout, LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Point, Size};
 use crate::layout::tree::{LayoutNodeKind, LayoutTree};
 use crate::styles::context::{FontStyle, StyleContext};
 
 fn parley_style<'a>(style: &StyleContext) -> Vec<StyleProperty<'a, [u8; 4]>> {
-    println!("parley_style: {:?}", style.font_size);
-
     let em = style.resolved_font_size;
     let rem = style.resolved_root_font_size;
     let dpi = style.dpi;
@@ -50,14 +48,18 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
                     i_items.push(InlineItemBuilder::Text { range: start..end, styles: parley_style(&child_node.style_context) })
                 }
             }
-            LayoutNodeKind::InlineContent | LayoutNodeKind::Container => {
+            LayoutNodeKind::InlineContent => {
                 let layout = tree.compute_child_layout(NodeId::from(child_id), inputs);
                 let width = layout.size.width;
                 let height = layout.size.height;
+
+                println!("Inline content laid out at W{} H{}", width, height);
+
                 let index = i_text.len();
 
                 i_items.push(InlineItemBuilder::Inline { id: child_id as u64, index, width, height });
             }
+            LayoutNodeKind::Container => { }
         }
     }
 
@@ -84,18 +86,31 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
 
     println!("text {:?}", i_text);
 
-    println!("available width: {:?}", available_width);
-
     layout.break_all_lines(available_width);
     layout.align(available_width, Alignment::Start, AlignmentOptions::default());
 
     let total_width = layout.width();
-    let total_height = layout.height();
 
-    println!("Total width: {}, height: {}", total_width, total_height);
+    let total_height = layout.lines()
+        .map(|line| line.metrics().offset + line.metrics().line_height) // total bottom of each line
+        .fold(0.0, f32::max);
+
+    //let total_height = layout.height();
+
+    let baseline_y = layout.lines()
+        .next()
+        .map(|line| line.metrics().baseline)
+        .unwrap_or(0.0);
+
+    let first_baselines = Point { x: None, y: Some(baseline_y) };
 
     let node_mut = tree.node_from_id_mut(node_id);
     node_mut.inline_layout = Some(layout);
 
-    LayoutOutput::from_outer_size(Size{ width: total_width, height: total_height })
+    let size = Size { width: total_width, height: total_height };
+    let content_size = size;
+
+    println!("Total width: {}, height: {}", total_width, total_height);
+
+    LayoutOutput::from_sizes_and_baselines(size, content_size, first_baselines)
 }
