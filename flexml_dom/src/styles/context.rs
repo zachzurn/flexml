@@ -482,10 +482,6 @@ impl StyleContext {
         50.0f32
     }
 
-    pub fn default_dpi() -> f32 {
-        72.0f32
-    }
-
     pub fn min_dpi() -> f32 {
         25.0f32
     }
@@ -600,7 +596,7 @@ impl Default for StyleContext {
             font_style: Default::default(),
             text_transform: Default::default(),
             letter_spacing: Default::default(),
-            line_height: Default::default(),
+            line_height: Dimension::Em(1.2),
             font_weight: 300,
             word_spacing: Default::default(),
             bg_color: Color::transparent(),

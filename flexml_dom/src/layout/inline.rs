@@ -1,6 +1,6 @@
 use std::ops::Range;
 use parley::{Alignment, AlignmentOptions, FontWeight, InlineBox, LineHeight, StyleProperty};
-use taffy::{compute_leaf_layout, LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Point, Size};
+use taffy::{compute_leaf_layout, AvailableSpace, LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Point, Size, SizingMode};
 use crate::layout::tree::{LayoutNodeKind, LayoutTree};
 use crate::styles::context::{FontStyle, StyleContext};
 
@@ -48,18 +48,26 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
                     i_items.push(InlineItemBuilder::Text { range: start..end, styles: parley_style(&child_node.style_context) })
                 }
             }
-            LayoutNodeKind::InlineContent => {
-                let layout = tree.compute_child_layout(NodeId::from(child_id), inputs);
-                let width = layout.size.width;
-                let height = layout.size.height;
+            // Containers directly in an inline layout are considered inline block
+            LayoutNodeKind::Container => {
+                let inline_index = i_text.len();
+                let mut inline_block = inputs; //Copy
+                inline_block.sizing_mode = SizingMode::ContentSize;
+                inline_block.available_space.height = AvailableSpace::MaxContent;
+                inline_block.available_space.width = AvailableSpace::MinContent;
 
-                println!("Inline content laid out at W{} H{}", width, height);
+                let layout = tree.compute_child_layout(NodeId::from(child_id), inline_block);
+                //tree.compute_layout(child_id, inline_block.available_space, true);
+                //let layout = tree.node_from_id(NodeId::from(child_id)).final_layout;
+                let width = layout.content_size.width;
+                let height = layout.content_size.height;
 
-                let index = i_text.len();
-
-                i_items.push(InlineItemBuilder::Inline { id: child_id as u64, index, width, height });
+                i_items.push(InlineItemBuilder::Inline { id: child_id as u64, index: inline_index, width, height });
             }
-            LayoutNodeKind::Container => { }
+
+            // Inline content should only contain Containers and Text
+            // Other InlineContent is ignored as is considered an error
+            _ => {  }
         }
     }
 
@@ -84,18 +92,11 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
 
     let available_width = Some(inputs.available_space.width.unwrap_or(f32::INFINITY));
 
-    println!("text {:?}", i_text);
-
     layout.break_all_lines(available_width);
     layout.align(available_width, Alignment::Start, AlignmentOptions::default());
 
     let total_width = layout.width();
-
-    let total_height = layout.lines()
-        .map(|line| line.metrics().offset + line.metrics().line_height) // total bottom of each line
-        .fold(0.0, f32::max);
-
-    //let total_height = layout.height();
+    let total_height = layout.height();
 
     let baseline_y = layout.lines()
         .next()
@@ -109,8 +110,6 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
 
     let size = Size { width: total_width, height: total_height };
     let content_size = size;
-
-    println!("Total width: {}, height: {}", total_width, total_height);
 
     LayoutOutput::from_sizes_and_baselines(size, content_size, first_baselines)
 }

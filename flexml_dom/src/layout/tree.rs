@@ -4,6 +4,7 @@ use crate::layout::FlexmlLayoutContext;
 use crate::layout::inline::{compute_inline_layout};
 use crate::layout::taffy_style::style_context_to_taffy;
 use crate::styles::context::StyleContext;
+use crate::styles::{context, style};
 
 #[derive(Debug, Copy, Clone)]
 /// Content is flex and block containers.
@@ -255,7 +256,13 @@ impl PrintTree for LayoutTree {
     fn get_debug_label(&self, node_id: NodeId) -> &'static str {
         let node = self.node_from_id(node_id);
         match node.kind {
-            LayoutNodeKind::Container => "Container",
+            LayoutNodeKind::Container => match node.style_context.display {
+                context::Display::Block => "Block",
+                context::Display::Inline => "Inline",
+                context::Display::InlineBlock => "Inline Block",
+                context::Display::Flex => "Flex",
+                context::Display::Table => "Table",
+            },
             LayoutNodeKind::InlineContent => "Inline Content",
             LayoutNodeKind::Text => "Text",
         }
