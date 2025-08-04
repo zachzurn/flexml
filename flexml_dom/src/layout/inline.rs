@@ -51,12 +51,8 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
             // Containers directly in an inline layout are considered inline block
             LayoutNodeKind::Container => {
                 let inline_index = i_text.len();
-                let mut inline_block = inputs; //Copy
-                inline_block.sizing_mode = SizingMode::ContentSize;
-                inline_block.available_space.height = AvailableSpace::MaxContent;
-                inline_block.available_space.width = AvailableSpace::MinContent;
 
-                let layout = tree.compute_child_layout(NodeId::from(child_id), inline_block);
+                let layout = tree.compute_child_layout(NodeId::from(child_id), inputs);
                 //tree.compute_layout(child_id, inline_block.available_space, true);
                 //let layout = tree.node_from_id(NodeId::from(child_id)).final_layout;
                 let width = layout.content_size.width;

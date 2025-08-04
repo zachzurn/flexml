@@ -112,12 +112,12 @@ fn render_fragment_group(scene: &mut Scene, context: &FlexmlLayoutContext, group
                     .map(|angle| Affine::skew(angle.to_radians().tan() as f64, 0.0));
 
                 let mut cursor_x = fragment.bounds.x;
-                let mut cursor_y = fragment.bounds.y + glyph_run.baseline;
+                let cursor_y = fragment.bounds.y + glyph_run.baseline;
 
                 scene
                     .draw_glyphs(&glyph_run.font)
                     .brush(color)
-                    .hint(true)
+                    .hint(false)
                     .transform(Affine::IDENTITY)
                     .glyph_transform(glyph_xform)
                     .font_size(glyph_run.font_size)
@@ -273,7 +273,7 @@ mod tests {
     fn test_render_box_scene() -> Result<()> {
         //let input = "[width: 5in + height: 2in + bgColor: #ff0000AA this is some text \r\n and some more on a new line] [box + bgColor: #00FF00AA + height: 1in]";
 
-        let input = "[ We have some [bold BOLD] text! ]";
+        let input = "[color: #ff0000 We have 😄 some [bold Bold like ] text! ]";
 
         let document = FlexmlDocument::new(input)
             .parse();
