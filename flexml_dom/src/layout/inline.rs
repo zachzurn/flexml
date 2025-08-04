@@ -1,5 +1,5 @@
 use std::ops::Range;
-use parley::{Alignment, AlignmentOptions, Brush, FontWeight, InlineBox, LineHeight, PositionedLayoutItem, RangedBuilder, StyleProperty};
+use parley::{Alignment, AlignmentOptions, FontWeight, InlineBox, LineHeight, StyleProperty};
 use taffy::{LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Size};
 use crate::layout::tree::{LayoutNodeKind, LayoutTree};
 use crate::styles::context::{FontStyle, StyleContext};
@@ -23,6 +23,7 @@ fn parley_style<'a>(style: &StyleContext) -> Vec<StyleProperty<'a, [u8; 4]>> {
         StyleProperty::LetterSpacing(style.letter_spacing.to_pixels(em, rem, em, dpi)),
         StyleProperty::FontWeight(FontWeight::new(style.font_weight as f32)),
         StyleProperty::FontStyle(font_style),
+        StyleProperty::Brush([style.color.0, style.color.1, style.color.2, style.color.3]),
         // TODO add other styles
     ]
 }
@@ -34,9 +35,7 @@ enum InlineItemBuilder<'a> {
 
 /// Layout an inline container.
 /// We use the tree to compute inline blocks
-pub fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inputs: LayoutInput) -> LayoutOutput {
-    let node = tree.node_from_id(node_id);
-
+pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inputs: LayoutInput) -> LayoutOutput {
     let mut i_text = String::new();
     let mut i_items: Vec<InlineItemBuilder> = Vec::new();
 
@@ -62,7 +61,7 @@ pub fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inputs: La
         }
     }
 
-    let mut builder = tree.parley_layout_context.ranged_builder(&mut tree.parley_font_context, &i_text, tree.parley_display_scale, true);
+    let mut builder = tree.context.parley_layout_context.ranged_builder(&mut tree.context.parley_font_context, &i_text, tree.context.parley_display_scale, true);
 
     for i_item in i_items {
         match i_item {

@@ -1,7 +1,7 @@
 use crate::styles::context::{StyleContext, WhiteSpace};
 use crate::styles::builtin::{apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue};
-use crate::styles::style::StyleValueParser::MatchParser;
+use crate::styles::style::StyleValueParser::Match;
 
 fn apply_white_space(value: &StyleValue, context: &mut StyleContext) {
     apply_match_style(value, &mut context.white_space, &[
@@ -15,7 +15,7 @@ fn apply_white_space(value: &StyleValue, context: &mut StyleContext) {
 
 pub static WHITE_SPACE: BuiltInStyle = BuiltInStyle {
     name: "whiteSpace",
-    parser: MatchParser(&["normal", "nowrap", "pre", "pre-wrap", "pre-line"]),
+    parser: Match(&["normal", "nowrap", "pre", "pre-wrap", "pre-line"]),
     styles: &[
         ("pre", StyleValue::Match(3)),
         ("code", StyleValue::Match(3)),

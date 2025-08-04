@@ -1,9 +1,8 @@
 use std::collections::{HashMap, HashSet};
-use taffy::Style;
 use url::Url;
 use crate::strings::{Chars, ValueErrors, ValueHelp};
 use crate::styles::builtin::{BuiltInStyle, DEFAULT_BUILTINS, ROOT_STYLE_NAME};
-use crate::styles::context::{Dimension, StyleContext};
+use crate::styles::context::{Color, StyleContext};
 use crate::styles::context::Dimension::Resolved;
 use crate::styles::style::StyleValue::{Font, Image};
 use super::style::{AtomicStyle, FileId, FontId, ImageId, RawStyle, StyleId, StyleValue, StyleValueParser, UrlType};
@@ -84,25 +83,25 @@ impl StyleRegistry {
     pub fn print_atomics(&self) {
         for builtin in &self.builtins {
             let description = match builtin.parser {
-                StyleValueParser::PositiveNumberParser => {
+                StyleValueParser::PositiveNumber => {
                     "positive number (u16 or percent float)"
-                },
-                StyleValueParser::FloatParser => {
+                }
+                StyleValueParser::Float => {
                     "float value f32"
-                },
-                StyleValueParser::ColorParser => {
+                }
+                StyleValueParser::Color => {
                     "color RGBA struct"
-                },
-                StyleValueParser::MatchParser(matches) => {
+                }
+                StyleValueParser::Match(matches) => {
                     &format!("One of: {}", matches.join(", "))
                 },
-                StyleValueParser::NumberParser => {
+                StyleValueParser::Number => {
                     "number (i32 or percent float)"
-                },
-                StyleValueParser::MatchOrFloatParser(matches) => {
+                }
+                StyleValueParser::MatchOrFloat(matches) => {
                     &format!("Float value or one of: {}", matches.join(", "))
                 },
-                StyleValueParser::UrlParser(kind) => {
+                StyleValueParser::Url(kind) => {
                     match kind {
                         UrlType::Image => "image url",
                         UrlType::Font => "font url",
@@ -121,11 +120,10 @@ impl StyleRegistry {
         // will apply.
         root.set_as_root();
 
-        if let Some(&id) = self.names_map.get(ROOT_STYLE_NAME) {
-            if let Some(styles) = self.definitions.get(&id){
-                for atomic in styles {
-                    (self.builtins[atomic.id].apply_style)(&atomic.value, root);
-                }
+        if let Some(styles) = self.names_map.get(ROOT_STYLE_NAME)
+            .and_then(|&id| self.definitions.get(&id)) {
+            for atomic in styles {
+                (self.builtins[atomic.id].apply_style)(&atomic.value, root);
             }
         }
 
@@ -141,6 +139,10 @@ impl StyleRegistry {
         let min_height = StyleContext::min_page_height_resolved();
 
         let min_dpi = StyleContext::min_dpi();
+
+        if !root.has_bg_color() {
+            root.bg_color = Color(255,255,255,255);
+        }
 
         //Ensure sane values
         root.dpi = min_dpi.max(root.dpi).round();

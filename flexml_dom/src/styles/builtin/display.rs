@@ -1,7 +1,7 @@
 use crate::styles::context::{Display, StyleContext};
 use crate::styles::builtin::{apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue};
-use crate::styles::style::StyleValueParser::MatchParser;
+use crate::styles::style::StyleValueParser::Match;
 
 fn apply_display(value: &StyleValue, context: &mut StyleContext) {
     apply_match_style(value, &mut context.display, &[
@@ -15,7 +15,7 @@ fn apply_display(value: &StyleValue, context: &mut StyleContext) {
 
 pub static DISPLAY: BuiltInStyle = BuiltInStyle {
     name: "display",
-    parser: MatchParser(&[
+    parser: Match(&[
         "block",
         "inline",
         "inline-block",

@@ -11,6 +11,7 @@ pub enum Dimension {
     #[default]
     Auto,
     Content,
+    Zero,
     Px(f32),
     Percent(f32),
     Point(f32),
@@ -35,35 +36,15 @@ impl Dimension {
             Dimension::Px(px) => px * (dpi * STANDARD_DPI),
             Dimension::Em(em) => em * em_px,
             Dimension::Rem(rem) => rem * rem_px,
-            Dimension::Auto => 0f32,
-            Dimension::Content => 0f32,
+            Dimension::Auto | Dimension::Content | Dimension::Zero => 0.0,
             Dimension::Resolved(resolved_value) => *resolved_value,
-        }
-    }
-
-
-
-    pub fn is_auto(&self) -> bool {
-        match self {
-            Dimension::Auto => true,
-            _ => false
-        }
-    }
-
-    pub fn is_content(&self) -> bool {
-        match self {
-            Dimension::Content => true,
-            _ => false
         }
     }
 
     /// Does the dimension have a non specified dimension
     /// like auto or content
     pub fn is_none(&self) -> bool {
-        match self {
-            Dimension::Auto | Dimension::Content => true,
-            _ => false
-        }
+        matches!(self, Dimension::Auto | Dimension::Content)
     }
 }
 
@@ -254,6 +235,14 @@ pub enum BorderStyle {
 pub struct Color(pub u8, pub u8, pub u8, pub u8); // RGBA
 
 
+impl Color {
+    fn transparent() -> Self {
+        Self(0, 0, 0, 0)
+    }
+}
+
+
+
 bitflags! {
     #[derive(Default, Clone, Copy, Debug, PartialEq)]
     pub struct StyleBits: u64 {
@@ -264,13 +253,11 @@ bitflags! {
         const WHITE_SPACE          = 1 << 2;
         const OPACITY              = 1 << 3;
 
-        const MARGIN               = 1 << 4;
         const MARGIN_TOP          = 1 << 5;
         const MARGIN_BOTTOM       = 1 << 6;
         const MARGIN_LEFT         = 1 << 7;
         const MARGIN_RIGHT        = 1 << 8;
 
-        const PADDING              = 1 << 9;
         const PADDING_TOP         = 1 << 10;
         const PADDING_BOTTOM      = 1 << 11;
         const PADDING_LEFT        = 1 << 12;
@@ -314,7 +301,6 @@ bitflags! {
         const BG_REPEAT            = 1 << 46;
         const BG_SIZE              = 1 << 47;
 
-        const BORDER_RADIUS        = 1 << 48;
         const BORDER_TOP_LEFT      = 1 << 49;
         const BORDER_TOP_RIGHT     = 1 << 50;
         const BORDER_BOTTOM_LEFT   = 1 << 51;
@@ -350,13 +336,11 @@ pub struct StyleContext {
     pub white_space: WhiteSpace,
     pub opacity: f32,
 
-    pub margin: Dimension,
     pub margin_top: Dimension,
     pub margin_bottom: Dimension,
     pub margin_left: Dimension,
     pub margin_right: Dimension,
 
-    pub padding: Dimension,
     pub padding_top: Dimension,
     pub padding_bottom: Dimension,
     pub padding_left: Dimension,
@@ -403,37 +387,15 @@ pub struct StyleContext {
     pub bg_repeat: BgRepeat,
     pub bg_size: BgSize,
 
-    pub border_radius: Dimension,
     pub border_top_left_radius: Dimension,
     pub border_top_right_radius: Dimension,
     pub border_bottom_left_radius: Dimension,
     pub border_bottom_right_radius: Dimension,
+
     pub border_color: Color,
     pub border_style: BorderStyle,
     pub border_width: Dimension,
 }
-
-macro_rules! style_field {
-    ($field:ident : $ty:ty, $bit:expr, $default:expr) => {
-        paste! {
-            pub fn [<set_ $field>](&mut self, value: $ty) {
-                self.$field = value;
-                self.bits.insert($bit);
-            }
-            pub fn [<has_ $field>](&self) -> bool {
-                self.bits.contains($bit)
-            }
-            // pub fn [<effective_ $field>](&self, fallback: $ty) -> $ty where $ty: Copy {
-            //     if self.bits.contains($bit) {
-            //         self.$field
-            //     } else {
-            //         fallback
-            //     }
-            // }
-        }
-    };
-}
-
 
 impl StyleContext {
     pub fn cascade_from(&mut self, parent: &StyleContext) {
@@ -460,7 +422,7 @@ impl StyleContext {
         }
 
         //Enforce auto display rules
-        if !self.has_display() {
+        if !self.has_display() && !parent.is_root() {
             match parent.display {
                 Display::Inline | Display::Block | Display::InlineBlock => {
                     self.set_display(Display::Inline);
@@ -482,6 +444,20 @@ impl StyleContext {
     }
 }
 
+macro_rules! style_field {
+    ($field:ident : $ty:ty, $bit:expr) => {
+        paste! {
+            pub fn [<set_ $field>](&mut self, value: $ty) {
+                self.$field = value;
+                self.bits.insert($bit);
+            }
+
+            pub fn [<has_ $field>](&self) -> bool {
+                self.bits.contains($bit)
+            }
+        }
+    };
+}
 
 impl StyleContext {
 
@@ -525,109 +501,107 @@ impl StyleContext {
         25.0f32
     }
 
-    style_field!(display: Display, StyleBits::DISPLAY, Display::Block);
-    style_field!(white_space: WhiteSpace, StyleBits::WHITE_SPACE, WhiteSpace::Normal);
-    style_field!(opacity: f32, StyleBits::OPACITY, 1.0);
+    style_field!(display: Display, StyleBits::DISPLAY);
+    style_field!(white_space: WhiteSpace, StyleBits::WHITE_SPACE);
+    style_field!(opacity: f32, StyleBits::OPACITY);
 
-    style_field!(margin: Dimension, StyleBits::MARGIN, Dimension::default());
-    style_field!(margin_top: Dimension, StyleBits::MARGIN_TOP, Dimension::default());
-    style_field!(margin_bottom: Dimension, StyleBits::MARGIN_BOTTOM, Dimension::default());
-    style_field!(margin_left: Dimension, StyleBits::MARGIN_LEFT, Dimension::default());
-    style_field!(margin_right: Dimension, StyleBits::MARGIN_RIGHT, Dimension::default());
+    style_field!(margin_top: Dimension, StyleBits::MARGIN_TOP);
+    style_field!(margin_bottom: Dimension, StyleBits::MARGIN_BOTTOM);
+    style_field!(margin_left: Dimension, StyleBits::MARGIN_LEFT);
+    style_field!(margin_right: Dimension, StyleBits::MARGIN_RIGHT);
 
-    style_field!(padding: Dimension, StyleBits::PADDING, Dimension::default());
-    style_field!(padding_top: Dimension, StyleBits::PADDING_TOP, Dimension::default());
-    style_field!(padding_bottom: Dimension, StyleBits::PADDING_BOTTOM, Dimension::default());
-    style_field!(padding_left: Dimension, StyleBits::PADDING_LEFT, Dimension::default());
-    style_field!(padding_right: Dimension, StyleBits::PADDING_RIGHT, Dimension::default());
+    style_field!(padding_top: Dimension, StyleBits::PADDING_TOP);
+    style_field!(padding_bottom: Dimension, StyleBits::PADDING_BOTTOM);
+    style_field!(padding_left: Dimension, StyleBits::PADDING_LEFT);
+    style_field!(padding_right: Dimension, StyleBits::PADDING_RIGHT);
 
-    style_field!(align_content: AlignContent, StyleBits::ALIGN_CONTENT, AlignContent::FlexStart);
-    style_field!(align_items: AlignItems, StyleBits::ALIGN_ITEMS, AlignItems::FlexStart);
-    style_field!(align_self: AlignSelf, StyleBits::ALIGN_SELF, AlignSelf::Auto);
-    style_field!(gap: Dimension, StyleBits::GAP, Dimension::default());
-    style_field!(column_gap: Dimension, StyleBits::COLUMN_GAP, Dimension::default());
-    style_field!(row_gap: Dimension, StyleBits::ROW_GAP, Dimension::default());
+    style_field!(align_content: AlignContent, StyleBits::ALIGN_CONTENT);
+    style_field!(align_items: AlignItems, StyleBits::ALIGN_ITEMS);
+    style_field!(align_self: AlignSelf, StyleBits::ALIGN_SELF);
+    style_field!(gap: Dimension, StyleBits::GAP);
+    style_field!(column_gap: Dimension, StyleBits::COLUMN_GAP);
+    style_field!(row_gap: Dimension, StyleBits::ROW_GAP);
 
-    style_field!(flex_basis: Dimension, StyleBits::FLEX_BASIS, Dimension::Auto);
-    style_field!(flex_direction: FlexDirection, StyleBits::FLEX_DIRECTION, FlexDirection::Row);
-    style_field!(flex_grow: f32, StyleBits::FLEX_GROW, 0.0);
-    style_field!(flex_shrink: f32, StyleBits::FLEX_SHRINK, 0.0);
-    style_field!(justify_content: JustifyContent, StyleBits::JUSTIFY_CONTENT, JustifyContent::FlexStart);
-    style_field!(flex_wrap: FlexWrap, StyleBits::FLEX_WRAP, FlexWrap::NoWrap);
+    style_field!(flex_basis: Dimension, StyleBits::FLEX_BASIS);
+    style_field!(flex_direction: FlexDirection, StyleBits::FLEX_DIRECTION);
+    style_field!(flex_grow: f32, StyleBits::FLEX_GROW);
+    style_field!(flex_shrink: f32, StyleBits::FLEX_SHRINK);
+    style_field!(justify_content: JustifyContent, StyleBits::JUSTIFY_CONTENT);
+    style_field!(flex_wrap: FlexWrap, StyleBits::FLEX_WRAP);
 
-    style_field!(width: Dimension, StyleBits::WIDTH, Dimension::default());
-    style_field!(max_width: Dimension, StyleBits::MAX_WIDTH, Dimension::default());
-    style_field!(min_width: Dimension, StyleBits::MIN_WIDTH, Dimension::default());
-    style_field!(height: Dimension, StyleBits::HEIGHT, Dimension::default());
-    style_field!(max_height: Dimension, StyleBits::MAX_HEIGHT, Dimension::default());
-    style_field!(min_height: Dimension, StyleBits::MIN_HEIGHT, Dimension::default());
+    style_field!(width: Dimension, StyleBits::WIDTH);
+    style_field!(max_width: Dimension, StyleBits::MAX_WIDTH);
+    style_field!(min_width: Dimension, StyleBits::MIN_WIDTH);
+    style_field!(height: Dimension, StyleBits::HEIGHT);
+    style_field!(max_height: Dimension, StyleBits::MAX_HEIGHT);
+    style_field!(min_height: Dimension, StyleBits::MIN_HEIGHT);
 
-    style_field!(text_align: TextAlign, StyleBits::TEXT_ALIGN, TextAlign::Left);
-    style_field!(color: Color, StyleBits::COLOR, Color(0, 0, 0, 255));
-    style_field!(text_decoration: TextDecoration, StyleBits::TEXT_DECORATION, TextDecoration::None);
-    style_field!(font_family: FontFamily, StyleBits::FONT_FAMILY, FontFamily::Default);
-    style_field!(font_size: Dimension, StyleBits::FONT_SIZE, Dimension::Resolved(16.0f32));
-    style_field!(font_style: FontStyle, StyleBits::FONT_STYLE, FontStyle::Normal);
-    style_field!(text_transform: TextTransform, StyleBits::TEXT_TRANSFORM, TextTransform::None);
-    style_field!(letter_spacing: Dimension, StyleBits::LETTER_SPACING, Dimension::Resolved(0.0f32));
-    style_field!(line_height: Dimension, StyleBits::LINE_HEIGHT, Dimension::em(1f32));
-    style_field!(font_weight: u16, StyleBits::FONT_WEIGHT, 300);
-    style_field!(word_spacing: Dimension, StyleBits::WORD_SPACING, Dimension::default());
+    style_field!(text_align: TextAlign, StyleBits::TEXT_ALIGN);
+    style_field!(color: Color, StyleBits::COLOR);
+    style_field!(text_decoration: TextDecoration, StyleBits::TEXT_DECORATION);
+    style_field!(font_family: FontFamily, StyleBits::FONT_FAMILY);
+    style_field!(font_size: Dimension, StyleBits::FONT_SIZE);
+    style_field!(font_style: FontStyle, StyleBits::FONT_STYLE);
+    style_field!(text_transform: TextTransform, StyleBits::TEXT_TRANSFORM);
+    style_field!(letter_spacing: Dimension, StyleBits::LETTER_SPACING);
+    style_field!(line_height: Dimension, StyleBits::LINE_HEIGHT);
+    style_field!(font_weight: u16, StyleBits::FONT_WEIGHT);
+    style_field!(word_spacing: Dimension, StyleBits::WORD_SPACING);
 
-    style_field!(bg_color: Color, StyleBits::BG_COLOR, Color(255, 255, 255, 255));
-    style_field!(bg_image: Image, StyleBits::BG_IMAGE, Image::default());
-    style_field!(bg_position: BgPosition, StyleBits::BG_POSITION, BgPosition::Center);
-    style_field!(bg_repeat: BgRepeat, StyleBits::BG_REPEAT, BgRepeat::NoRepeat);
-    style_field!(bg_size: BgSize, StyleBits::BG_SIZE, BgSize::Contain);
+    style_field!(bg_color: Color, StyleBits::BG_COLOR);
+    style_field!(bg_image: Image, StyleBits::BG_IMAGE);
+    style_field!(bg_position: BgPosition, StyleBits::BG_POSITION);
+    style_field!(bg_repeat: BgRepeat, StyleBits::BG_REPEAT);
+    style_field!(bg_size: BgSize, StyleBits::BG_SIZE);
 
-    style_field!(border_radius: Dimension, StyleBits::BORDER_RADIUS, Dimension::default());
-    style_field!(border_top_left_radius: Dimension, StyleBits::BORDER_TOP_LEFT, Dimension::default());
-    style_field!(border_top_right_radius: Dimension, StyleBits::BORDER_TOP_RIGHT, Dimension::default());
-    style_field!(border_bottom_left_radius: Dimension, StyleBits::BORDER_BOTTOM_LEFT, Dimension::default());
-    style_field!(border_bottom_right_radius: Dimension, StyleBits::BORDER_BOTTOM_RIGHT, Dimension::default());
-    style_field!(border_color: Color, StyleBits::BORDER_COLOR, Color(255, 255, 255, 255));
-    style_field!(border_style: BorderStyle, StyleBits::BORDER_STYLE, BorderStyle::Solid);
-    style_field!(border_width: Dimension, StyleBits::BORDER_WIDTH, Dimension::default());
+    style_field!(border_top_left_radius: Dimension, StyleBits::BORDER_TOP_LEFT);
+    style_field!(border_top_right_radius: Dimension, StyleBits::BORDER_TOP_RIGHT);
+    style_field!(border_bottom_left_radius: Dimension, StyleBits::BORDER_BOTTOM_LEFT);
+    style_field!(border_bottom_right_radius: Dimension, StyleBits::BORDER_BOTTOM_RIGHT);
+
+    style_field!(border_color: Color, StyleBits::BORDER_COLOR);
+    style_field!(border_style: BorderStyle, StyleBits::BORDER_STYLE);
+    style_field!(border_width: Dimension, StyleBits::BORDER_WIDTH);
 }
 
 
 impl Default for StyleContext {
     fn default() -> Self {
         Self {
-            dpi: 72.0f32,
+            dpi: 160.0f32,
+
             bits: Default::default(),
             display: Default::default(),
             white_space: Default::default(),
             opacity: 1.0,
-            margin: Default::default(),
-            margin_top: Default::default(),
-            margin_bottom: Default::default(),
-            margin_left: Default::default(),
-            margin_right: Default::default(),
-            padding: Default::default(),
-            padding_top: Default::default(),
-            padding_bottom: Default::default(),
-            padding_left: Default::default(),
-            padding_right: Default::default(),
+            margin_top: Dimension::Zero,
+            margin_bottom: Dimension::Zero,
+            margin_left: Dimension::Zero,
+            margin_right: Dimension::Zero,
+
+            padding_top: Dimension::Zero,
+            padding_bottom: Dimension::Zero,
+            padding_left: Dimension::Zero,
+            padding_right: Dimension::Zero,
             align_content: Default::default(),
             align_items: Default::default(),
             align_self: Default::default(),
-            gap: Default::default(),
-            column_gap: Default::default(),
-            row_gap: Default::default(),
+            gap: Dimension::Zero,
+            column_gap: Dimension::Zero,
+            row_gap: Dimension::Zero,
             flex_basis: Default::default(),
             flex_direction: Default::default(),
             flex_grow: 0.0,
             flex_shrink: 0.0,
             justify_content: Default::default(),
             flex_wrap: Default::default(),
-            width: Default::default(),
+            width: Dimension::Inch(8.5),
             max_width: Default::default(),
             min_width: Default::default(),
-            height: Default::default(),
+            height: Dimension::Inch(11.0),
             max_height: Default::default(),
             min_height: Default::default(),
-            text_align: Default::default(),
+            text_align: TextAlign::Left,
             color: Color(0,0,0,255),
             text_decoration: Default::default(),
             font_family: FontFamily::SansSerif,
@@ -640,19 +614,18 @@ impl Default for StyleContext {
             line_height: Default::default(),
             font_weight: 300,
             word_spacing: Default::default(),
-            bg_color: Color(255,255,255,255),
+            bg_color: Color::transparent(),
             bg_image: Image::None,
             bg_position: Default::default(),
             bg_repeat: Default::default(),
             bg_size: Default::default(),
-            border_radius: Default::default(),
-            border_top_left_radius: Default::default(),
-            border_top_right_radius: Default::default(),
-            border_bottom_left_radius: Default::default(),
-            border_bottom_right_radius: Default::default(),
-            border_color: Color(255,255,255,255),
-            border_style: Default::default(),
-            border_width: Default::default(),
+            border_top_left_radius: Dimension::Zero,
+            border_top_right_radius: Dimension::Zero,
+            border_bottom_left_radius: Dimension::Zero,
+            border_bottom_right_radius: Dimension::Zero,
+            border_color: Color::transparent(),
+            border_style: BorderStyle::Solid,
+            border_width: Dimension::Zero,
         }
     }
 

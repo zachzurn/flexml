@@ -1,30 +1,13 @@
-use std::fs::FileType;
-use lazy_static::lazy_static;
-use url::Url;
 use crate::strings::{Chars, ValueErrors, ValueHelp};
 use crate::styles::context::Dimension;
 use crate::styles::style::StyleValue::{FontUrl, ImageUrl};
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct RGBA {
+pub struct Rgba {
     pub(crate) r: u8,
     pub(crate) g: u8,
     pub(crate) b: u8,
     pub(crate) a: u8
-}
-
-impl RGBA {
-    pub fn green() -> Self {
-        Self{ r: 0, g: 255, b: 0, a: 255 }
-    }
-
-    pub fn blue() -> Self {
-        Self{ r: 0, g: 0, b: 255, a: 255 }
-    }
-
-    pub fn red() -> Self {
-        Self{ r: 255, g: 0, b: 0, a: 255 }
-    }
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -33,31 +16,14 @@ pub enum UrlType {
     Font
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct PercentFloat(f32);
-
-impl PercentFloat {
-    pub fn new(value: f32) -> Self {
-        if value >= 0.0 {
-            PercentFloat(value)
-        } else {
-            PercentFloat(0.0)
-        }
-    }
-    
-    pub fn get(&self) -> f32 {
-        self.0
-    }
-}
-
 pub enum StyleValueParser {
-    MatchOrFloatParser(&'static [&'static str]),
-    FloatParser,
-    NumberParser,
-    PositiveNumberParser,
-    MatchParser(&'static [&'static str]),
-    ColorParser,
-    UrlParser(&'static UrlType),
+    MatchOrFloat(&'static [&'static str]),
+    Float,
+    Number,
+    PositiveNumber,
+    Match(&'static [&'static str]),
+    Color,
+    Url(&'static UrlType),
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -76,7 +42,7 @@ pub enum StyleValue {
     ImageUrl(String),
 
     Match(u8),
-    Color(RGBA),
+    Color(Rgba),
     Font(FontId),
     Image(ImageId),
     Unset,
@@ -107,12 +73,6 @@ impl RawStyle<'_> {
             value,
         }
     }
-}
-
-lazy_static! {
-    // We use a base url for parsing relative urls
-    pub static ref BASE_URL: Url = Url::parse("flexml://")
-        .expect("Failed to parse BASE_URL URL at compile time. This should be a valid URL.");
 }
 
 pub enum DimensionKind {
@@ -148,14 +108,14 @@ static DIMENSION_KIND: &[DimensionKind; 7] = &[
 impl StyleValueParser {
 
     pub fn parse(&self, s: &str) -> StyleValue {
-        match self {
-            &StyleValueParser::MatchParser(matches) => Self::parse_match(matches, s),
-            &StyleValueParser::MatchOrFloatParser(matches) => Self::parse_match_or_float(matches, s),
-            &StyleValueParser::ColorParser => Self::parse_color(s),
-            &StyleValueParser::NumberParser => Self::parse_number(s),
-            &StyleValueParser::PositiveNumberParser => Self::parse_positive_number(s),
-            &StyleValueParser::UrlParser(kind) => Self::parse_url(&kind, s),
-            &StyleValueParser::FloatParser => Self::parse_float(s),
+        match *self {
+            StyleValueParser::Match(matches) => Self::parse_match(matches, s),
+            StyleValueParser::MatchOrFloat(matches) => Self::parse_match_or_float(matches, s),
+            StyleValueParser::Color => Self::parse_color(s),
+            StyleValueParser::Number => Self::parse_number(s),
+            StyleValueParser::PositiveNumber => Self::parse_positive_number(s),
+            StyleValueParser::Url(kind) => Self::parse_url(&kind, s),
+            StyleValueParser::Float => Self::parse_float(s),
         }
     }
 
@@ -290,7 +250,7 @@ impl StyleValueParser {
         }
 
         if let Some((r,g,b,a)) = Self::parse_hex_string(&s[1..]){
-            StyleValue::Color(RGBA { r, g, b, a })
+            StyleValue::Color(Rgba { r, g, b, a })
         } else {
             StyleValue::Invalid(ValueErrors::COLOR, ValueHelp::COLOR)
         }

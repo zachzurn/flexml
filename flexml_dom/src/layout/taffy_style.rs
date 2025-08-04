@@ -1,4 +1,4 @@
-use crate::styles::context::{AlignContent, AlignItems, Dimension, Display, FlexDirection, FlexWrap, JustifyContent, Length, StyleContext};
+use crate::styles::context::{AlignContent, AlignItems, Dimension, Display, FlexDirection, FlexWrap, JustifyContent, StyleContext};
 use std::default::Default;
 
 fn to_taffy_dimension(rem_px: f32, em_px: f32, dpi: f32, dim: Dimension) -> taffy::style::Dimension {

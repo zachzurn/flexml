@@ -1,7 +1,7 @@
-use crate::styles::context::{BgPosition, BgRepeat, BgSize, Color, Image, StyleContext};
+use crate::styles::context::{BgPosition, BgRepeat, BgSize, Image, StyleContext};
 use crate::styles::builtin::{apply_color, apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue, UrlType};
-use crate::styles::style::StyleValueParser::{ColorParser, MatchParser, UrlParser};
+use crate::styles::style::StyleValueParser::{Color, Match, Url};
 
 fn apply_bg_color(value: &StyleValue, context: &mut StyleContext) {
     apply_color(value, &mut context.bg_color);
@@ -9,7 +9,7 @@ fn apply_bg_color(value: &StyleValue, context: &mut StyleContext) {
 
 pub static BG_COLOR: BuiltInStyle = BuiltInStyle {
     name: "bgColor",
-    parser: ColorParser,
+    parser: Color,
     styles: &[],
     apply_style: apply_bg_color,
 };
@@ -23,7 +23,7 @@ fn apply_bg_image(value: &StyleValue, context: &mut StyleContext) {
 
 pub static BG_IMAGE: BuiltInStyle = BuiltInStyle {
     name: "bgImage",
-    parser: UrlParser(&UrlType::Image),
+    parser: Url(&UrlType::Image),
     styles: &[],
     apply_style: apply_bg_image,
 };
@@ -41,7 +41,7 @@ fn apply_bg_position(value: &StyleValue, context: &mut StyleContext) {
 
 pub static BG_POSITION: BuiltInStyle = BuiltInStyle {
     name: "bgPosition",
-    parser: MatchParser(&["center", "top", "bottom", "left", "right"]),
+    parser: Match(&["center", "top", "bottom", "left", "right"]),
     styles: &[
         ("bgCenter", StyleValue::Match(0)),
     ],
@@ -60,7 +60,7 @@ fn apply_bg_repeat(value: &StyleValue, context: &mut StyleContext) {
 
 pub static BG_REPEAT: BuiltInStyle = BuiltInStyle {
     name: "bgRepeat",
-    parser: MatchParser(&["repeat", "repeat-x", "repeat-y", "no-repeat"]),
+    parser: Match(&["repeat", "repeat-x", "repeat-y", "no-repeat"]),
     styles: &[
         ("noRepeat", StyleValue::Match(3)),
         ("repeat", StyleValue::Match(0)),
@@ -81,7 +81,7 @@ fn apply_bg_size(value: &StyleValue, context: &mut StyleContext) {
 
 pub static BG_SIZE: BuiltInStyle = BuiltInStyle {
     name: "bgSize",
-    parser: MatchParser(&["auto", "cover", "contain"]),
+    parser: Match(&["auto", "cover", "contain"]),
     styles: &[
         ("cover", StyleValue::Match(1)),
         ("contain", StyleValue::Match(2)),

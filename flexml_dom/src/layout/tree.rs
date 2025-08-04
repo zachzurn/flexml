@@ -1,9 +1,8 @@
-use parley::{FontContext, LayoutContext};
 use taffy::util::print_tree;
 use taffy::{compute_block_layout, compute_cached_layout, compute_flexbox_layout,compute_root_layout, prelude::*, round_layout, Cache, CacheTree, LayoutOutput};
+use crate::layout::FlexmlLayoutContext;
 use crate::layout::inline::{compute_inline_layout};
 use crate::layout::taffy_style::style_context_to_taffy;
-use crate::styles::context;
 use crate::styles::context::StyleContext;
 
 #[derive(Debug, Copy, Clone)]
@@ -16,31 +15,6 @@ pub(super) enum LayoutNodeKind {
     Container,
     InlineContent, // Inline content
     Text //Pure text
-}
-
-/// An inline fragment for rendering
-/// Layout / line-breaking is already
-/// completed.
-pub(super) struct InlineFragment {
-    pub(crate) x: f32,
-    pub(crate) y: f32,
-    pub(crate) width: f32,
-    pub(crate) height: f32,
-    pub(crate) baseline: f32,
-    pub(crate) items: Vec<InlineItem>,
-}
-
-pub enum InlineItem {
-    Text {
-        text: String,
-        offset: usize,
-        width: f32,
-        style: context::StyleContext,
-    },
-    InlineBlock {
-        node_id: usize,
-        layout: Layout,
-    }
 }
 
 pub(super)  struct LayoutNode {
@@ -88,18 +62,14 @@ impl LayoutNode {
 
 pub(super) struct LayoutTree {
     nodes: Vec<LayoutNode>,
-    pub(super) parley_font_context: FontContext,
-    pub(super) parley_layout_context: LayoutContext,
-    pub(super) parley_display_scale: f32
+    pub(super) context: FlexmlLayoutContext,
 }
 
 impl LayoutTree {
-    pub fn new() -> Self {
+    pub fn new(context: FlexmlLayoutContext) -> Self {
         Self {
             nodes: Vec::new(),
-            parley_font_context: FontContext::new(),
-            parley_layout_context: LayoutContext::new(),
-            parley_display_scale: 1.0
+            context
         }
     }
 

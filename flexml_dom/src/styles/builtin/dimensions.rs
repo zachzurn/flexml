@@ -1,14 +1,14 @@
 use crate::styles::context::StyleContext;
-use crate::styles::builtin::{apply_dimension, apply_length, BuiltInStyle};
+use crate::styles::builtin::{apply_dimension, BuiltInStyle};
 use crate::styles::style::StyleValue;
-use crate::styles::style::StyleValueParser::{PositiveNumberParser};
+use crate::styles::style::StyleValueParser::{PositiveNumber};
 
 fn apply_width(value: &StyleValue, context: &mut StyleContext) {
     apply_dimension(value, &mut context.width);
 }
 pub static WIDTH: BuiltInStyle = BuiltInStyle {
     name: "width",
-    parser: PositiveNumberParser,
+    parser: PositiveNumber,
     styles: &[],
     apply_style: apply_width,
 };
@@ -18,7 +18,7 @@ fn apply_max_width(value: &StyleValue, context: &mut StyleContext) {
 }
 pub static MAX_WIDTH: BuiltInStyle = BuiltInStyle {
     name: "maxWidth",
-    parser: PositiveNumberParser,
+    parser: PositiveNumber,
     styles: &[],
     apply_style: apply_max_width,
 };
@@ -28,7 +28,7 @@ fn apply_min_width(value: &StyleValue, context: &mut StyleContext) {
 }
 pub static MIN_WIDTH: BuiltInStyle = BuiltInStyle {
     name: "minWidth",
-    parser: PositiveNumberParser,
+    parser: PositiveNumber,
     styles: &[],
     apply_style: apply_min_width,
 };
@@ -38,7 +38,7 @@ fn apply_height(value: &StyleValue, context: &mut StyleContext) {
 }
 pub static HEIGHT: BuiltInStyle = BuiltInStyle {
     name: "height",
-    parser: PositiveNumberParser,
+    parser: PositiveNumber,
     styles: &[],
     apply_style: apply_height,
 };
@@ -48,7 +48,7 @@ fn apply_max_height(value: &StyleValue, context: &mut StyleContext) {
 }
 pub static MAX_HEIGHT: BuiltInStyle = BuiltInStyle {
     name: "maxHeight",
-    parser: PositiveNumberParser,
+    parser: PositiveNumber,
     styles: &[],
     apply_style: apply_max_height,
 };
@@ -58,7 +58,7 @@ fn apply_min_height(value: &StyleValue, context: &mut StyleContext) {
 }
 pub static MIN_HEIGHT: BuiltInStyle = BuiltInStyle {
     name: "minHeight",
-    parser: PositiveNumberParser,
+    parser: PositiveNumber,
     styles: &[],
     apply_style: apply_min_height,
 };

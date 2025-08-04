@@ -1,7 +1,7 @@
-use crate::styles::context::{AlignContent, AlignItems, AlignSelf, Dimension, FlexDirection, FlexWrap, JustifyContent, Length, StyleContext};
+use crate::styles::context::{AlignContent, AlignItems, AlignSelf, Dimension, FlexDirection, FlexWrap, JustifyContent, StyleContext};
 use crate::styles::builtin::{apply_dimension, apply_float, apply_length, apply_match_style, BuiltInStyle};
 use crate::styles::style::{StyleValue};
-use crate::styles::style::StyleValueParser::{FloatParser, MatchOrFloatParser, MatchParser, NumberParser};
+use crate::styles::style::StyleValueParser::{Float, MatchOrFloat, Match, Number};
 
 
 fn apply_align_content(value: &StyleValue, context: &mut StyleContext) {
@@ -17,7 +17,7 @@ fn apply_align_content(value: &StyleValue, context: &mut StyleContext) {
 
 pub static ALIGN_CONTENT: BuiltInStyle = BuiltInStyle {
     name: "alignContent",
-    parser: MatchParser(&[
+    parser: Match(&[
         "flex-start",
         "flex-end",
         "center",
@@ -46,7 +46,7 @@ fn apply_flex_direction(value: &StyleValue, context: &mut StyleContext) {
 
 pub static FLEX_DIRECTION: BuiltInStyle = BuiltInStyle {
     name: "flexDirection",
-    parser: MatchParser(&["row", "row-reverse", "column", "column-reverse"]),
+    parser: Match(&["row", "row-reverse", "column", "column-reverse"]),
     styles: &[
         ("row", StyleValue::Match(0)),
         ("col", StyleValue::Match(2)),
@@ -66,7 +66,7 @@ fn apply_flex_basis(value: &StyleValue, context: &mut StyleContext) {
 
 pub static FLEX_BASIS: BuiltInStyle = BuiltInStyle {
     name: "flexBasis",
-    parser: MatchOrFloatParser(&["auto", "content"]),
+    parser: MatchOrFloat(&["auto", "content"]),
     styles: &[
         ("basisAuto", StyleValue::Match(0)),
         ("basisContent", StyleValue::Match(1)),
@@ -81,7 +81,7 @@ fn apply_flex_grow(value: &StyleValue, context: &mut StyleContext) {
 
 pub static FLEX_GROW: BuiltInStyle = BuiltInStyle {
     name: "flexGrow",
-    parser: FloatParser,
+    parser: Float,
     styles: &[
         ("grow", StyleValue::Float(1.0)),
     ],
@@ -95,7 +95,7 @@ fn apply_flex_shrink(value: &StyleValue, context: &mut StyleContext) {
 
 pub static FLEX_SHRINK: BuiltInStyle = BuiltInStyle {
     name: "flexShrink",
-    parser: FloatParser,
+    parser: Float,
     styles: &[
         ("shrink", StyleValue::Float(1.0)),
     ],
@@ -114,7 +114,7 @@ fn apply_flex_wrap(value: &StyleValue, context: &mut StyleContext) {
 
 pub static FLEX_WRAP: BuiltInStyle = BuiltInStyle {
     name: "flexWrap",
-    parser: MatchParser(&["nowrap", "wrap", "wrap-reverse"]),
+    parser: Match(&["nowrap", "wrap", "wrap-reverse"]),
     styles: &[
         ("noWrap", StyleValue::Match(0)),
         ("wrapReverse", StyleValue::Match(2)),
@@ -129,7 +129,7 @@ fn apply_column_gap(value: &StyleValue, context: &mut StyleContext) {
 
 pub static COLUMN_GAP: BuiltInStyle = BuiltInStyle {
     name: "columnGap",
-    parser: NumberParser,
+    parser: Number,
     styles: &[],
     apply_style: apply_column_gap,
 };
@@ -147,7 +147,7 @@ fn apply_align_items(value: &StyleValue, context: &mut StyleContext) {
 
 pub static ALIGN_ITEMS: BuiltInStyle = BuiltInStyle {
     name: "alignItems",
-    parser: MatchParser(&["flex-start", "flex-end", "center", "baseline", "stretch"]),
+    parser: Match(&["flex-start", "flex-end", "center", "baseline", "stretch"]),
     styles: &[
         ("itemsStart", StyleValue::Match(0)),
         ("itemsCenter", StyleValue::Match(2)),
@@ -169,7 +169,7 @@ fn apply_align_self(value: &StyleValue, context: &mut StyleContext) {
 
 pub static ALIGN_SELF: BuiltInStyle = BuiltInStyle {
     name: "alignSelf",
-    parser: MatchParser(&["auto", "flex-start", "flex-end", "center", "baseline", "stretch"]),
+    parser: Match(&["auto", "flex-start", "flex-end", "center", "baseline", "stretch"]),
     styles: &[
         ("selfStart", StyleValue::Match(1)),
         ("selfStretch", StyleValue::Match(5)),
@@ -184,7 +184,7 @@ fn apply_gap(value: &StyleValue, context: &mut StyleContext) {
 
 pub static GAP: BuiltInStyle = BuiltInStyle {
     name: "gap",
-    parser: NumberParser,
+    parser: Number,
     styles: &[],
     apply_style: apply_gap,
 };
@@ -203,7 +203,7 @@ fn apply_justify_content(value: &StyleValue, context: &mut StyleContext) {
 
 pub static JUSTIFY_CONTENT: BuiltInStyle = BuiltInStyle {
     name: "justifyContent",
-    parser: MatchParser(&[
+    parser: Match(&[
         "flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly"
     ]),
     styles: &[
@@ -225,7 +225,7 @@ fn apply_row_gap(value: &StyleValue, context: &mut StyleContext) {
 
 pub static ROW_GAP: BuiltInStyle = BuiltInStyle {
     name: "rowGap",
-    parser: NumberParser,
+    parser: Number,
     styles: &[],
     apply_style: apply_row_gap,
 };

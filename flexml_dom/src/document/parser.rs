@@ -1,4 +1,3 @@
-use std::mem;
 use super::nodes::{Node};
 use super::tokens::Token;
 use super::tokens::Token::*;
