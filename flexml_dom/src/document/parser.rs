@@ -29,16 +29,6 @@ pub struct FlexmlDocument<'a> {
 }
 
 /// Parse flexml
-///
-/// ```
-/// let input = "[bold+italic this is some text ]";
-///
-/// let mut parser = Parser::new(input);
-///
-/// while let Some(node) = parser.parse_next() {
-///     println!("{:#?}", node);
-/// }
-/// ```
 impl<'a> FlexmlDocument<'a> {
     /// Create a new flexml document
     pub fn new(input: &'a str) -> Self {
@@ -179,6 +169,14 @@ impl<'a> FlexmlDocument<'a> {
     pub fn max_depth(&self) -> usize {
         self.max_depth
     }
+
+    pub fn print_nodes(&self) {
+        println!("📋 {}", self.name);
+
+        for node in &self.nodes {
+            node.print_tree(&self.style_registry, "", false)
+        }
+    }
 }
 
 // Parser
@@ -309,9 +307,9 @@ impl<'a> FlexmlDocument<'a> {
     ///
     /// Raw Tag Example:
     ///
-    /// ```
+    /// `
     /// |= This is all raw text [ This is also raw ] [and this is raw ] {and so is this } \=| <- This is raw as well  =|
-    /// ```
+    /// `
     fn parse_raw(&mut self) -> Node<'a> {
         let start = self.lexer.span().end; // Skip over the opening tag
         let mut end = start;
@@ -603,11 +601,9 @@ impl<'a> FlexmlDocument<'a> {
         let mut found = false;
 
         // peek for sep token and skip if found
-        if let Some((next, _)) = self.peek() {
-            if *next == sep {
-                found = true;
-                self.take();
-            }
+        if let Some((next, _)) = self.peek() && *next == sep {
+            found = true;
+            self.take();
         }
 
         self.skip_whitespace();

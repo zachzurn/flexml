@@ -316,83 +316,96 @@ static INHERITABLE_STYLES: &[StyleBits] = &[
 ];
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+/// All fields in StyleContext are private
+/// It's important that any changes are tracked
+/// with style bits
+///
+/// Use public getters and setters
 pub struct StyleContext {
-    pub bits: StyleBits,
+    bits: StyleBits,
 
-    pub dpi: f32,
+    dpi: f32,
 
-    pub display: Display,
-    pub white_space: WhiteSpace,
-    pub opacity: f32,
+    display: Display,
+    white_space: WhiteSpace,
+    opacity: f32,
 
-    pub margin_top: Dimension,
-    pub margin_bottom: Dimension,
-    pub margin_left: Dimension,
-    pub margin_right: Dimension,
+    margin_top: Dimension,
+    margin_bottom: Dimension,
+    margin_left: Dimension,
+    margin_right: Dimension,
 
-    pub padding_top: Dimension,
-    pub padding_bottom: Dimension,
-    pub padding_left: Dimension,
-    pub padding_right: Dimension,
+    padding_top: Dimension,
+    padding_bottom: Dimension,
+    padding_left: Dimension,
+    padding_right: Dimension,
 
-    pub align_content: AlignContent,
-    pub align_items: AlignItems,
-    pub align_self: AlignSelf,
-    pub gap: Dimension,
-    pub column_gap: Dimension,
-    pub row_gap: Dimension,
+    align_content: AlignContent,
+    align_items: AlignItems,
+    align_self: AlignSelf,
+    gap: Dimension,
+    column_gap: Dimension,
+    row_gap: Dimension,
 
-    pub flex_basis: Dimension,
-    pub flex_direction: FlexDirection,
-    pub flex_grow: f32,
-    pub flex_shrink: f32,
-    pub justify_content: JustifyContent,
-    pub flex_wrap: FlexWrap,
+    flex_basis: Dimension,
+    flex_direction: FlexDirection,
+    flex_grow: f32,
+    flex_shrink: f32,
+    justify_content: JustifyContent,
+    flex_wrap: FlexWrap,
 
-    pub width: Dimension,
-    pub max_width: Dimension,
-    pub min_width: Dimension,
-    pub height: Dimension,
-    pub max_height: Dimension,
-    pub min_height: Dimension,
+    width: Dimension,
+    max_width: Dimension,
+    min_width: Dimension,
+    height: Dimension,
+    max_height: Dimension,
+    min_height: Dimension,
 
-    pub text_align: TextAlign,
-    pub color: Color,
-    pub text_decoration: TextDecoration,
-    pub font_family: FontFamily,
-    pub font_size: Dimension,
-    pub resolved_font_size: f32,
-    pub resolved_root_font_size: f32,
-    pub font_style: FontStyle,
-    pub text_transform: TextTransform,
-    pub letter_spacing: Dimension,
-    pub line_height: Dimension,
-    pub font_weight: u16,
-    pub word_spacing: Dimension,
+    text_align: TextAlign,
+    color: Color,
+    text_decoration: TextDecoration,
+    font_family: FontFamily,
+    font_size: Dimension,
+    resolved_font_size: f32,
+    resolved_root_font_size: f32,
+    font_style: FontStyle,
+    text_transform: TextTransform,
+    letter_spacing: Dimension,
+    line_height: Dimension,
+    font_weight: u16,
+    word_spacing: Dimension,
 
-    pub bg_color: Color,
-    pub bg_image: Image,
-    pub bg_position: BgPosition,
-    pub bg_repeat: BgRepeat,
-    pub bg_size: BgSize,
+    bg_color: Color,
+    bg_image: Image,
+    bg_position: BgPosition,
+    bg_repeat: BgRepeat,
+    bg_size: BgSize,
 
-    pub border_top_left_radius: Dimension,
-    pub border_top_right_radius: Dimension,
-    pub border_bottom_left_radius: Dimension,
-    pub border_bottom_right_radius: Dimension,
+    border_top_left_radius: Dimension,
+    border_top_right_radius: Dimension,
+    border_bottom_left_radius: Dimension,
+    border_bottom_right_radius: Dimension,
 
-    pub border_color: Color,
-    pub border_style: BorderStyle,
-    pub border_width: Dimension,
+    border_color: Color,
+    border_style: BorderStyle,
+    border_width: Dimension,
 }
 
 impl StyleContext {
     pub fn cascade_from(&mut self, parent: &StyleContext) {
+        // TODO at some point figure out how to pull root only styles into
+        // something else so that we don't have copies of every root parameter
+        // on every style_context. Also we should maybe separate layout context
+        // from text context
+
+
+        // We check if the style was not explicitly set and then
+        // set the style from the parent.
         for &bit in INHERITABLE_STYLES {
             if !self.bits.contains(bit) && parent.bits.contains(bit) {
                 match bit {
                     StyleBits::COLOR => self.color = parent.color,
-                    StyleBits::FONT_FAMILY => self.font_family = parent.font_family.clone(),
+                    StyleBits::FONT_FAMILY => self.font_family = parent.font_family,
                     StyleBits::FONT_SIZE => self.font_size = parent.font_size,
                     StyleBits::FONT_STYLE => self.font_style = parent.font_style,
                     StyleBits::FONT_WEIGHT => self.font_weight = parent.font_weight,
@@ -411,6 +424,8 @@ impl StyleContext {
         }
 
         //Enforce auto display rules
+        //Anything inside a block, inline or inline block
+        //That didn't explicitly set a Display will be set to inline
         if !self.has_display() && !parent.is_root() {
             match parent.display {
                 Display::Inline | Display::Block | Display::InlineBlock => {
@@ -420,7 +435,10 @@ impl StyleContext {
             }
         }
 
+
+
         // Calculate resolved font sizes
+        // This makes cascaded em and rem dimensions possible
         self.resolved_font_size = self.font_size.to_pixels(
             parent.resolved_font_size,       // for Percent and Em
             parent.resolved_root_font_size,  // for Rem
@@ -444,6 +462,10 @@ macro_rules! style_field {
             pub fn [<has_ $field>](&self) -> bool {
                 self.bits.contains($bit)
             }
+
+            pub fn [<$field>](&self) -> $ty {
+                self.$field
+            }
         }
     };
 }
@@ -454,8 +476,36 @@ impl StyleContext {
         self.bits.insert(StyleBits::IS_ROOT);
     }
 
+    pub fn clear_as_root(&mut self) {
+        self.bits.remove(StyleBits::IS_ROOT);
+    }
+
     pub fn is_root(&self) -> bool {
         self.bits.contains(StyleBits::IS_ROOT)
+    }
+
+    pub fn set_dpi(&mut self, dpi: f32) {
+        self.dpi = dpi
+    }
+
+    pub fn dpi(&self) -> f32 {
+        self.dpi
+    }
+
+    pub fn resolved_font_size(&self) -> f32{
+        self.resolved_font_size
+    }
+
+    pub fn set_resolved_font_size(&mut self, resolved_font_size: f32) {
+        self.resolved_font_size = resolved_font_size
+    }
+
+    pub fn resolved_root_font_size(&self) -> f32{
+        self.resolved_root_font_size
+    }
+
+    pub fn set_resolved_root_font_size(&mut self, resolved_root_font_size: f32) {
+        self.resolved_root_font_size = resolved_root_font_size
     }
 
     pub fn default_font_size_pixels() -> f32 {
@@ -556,7 +606,7 @@ impl Default for StyleContext {
             dpi: 160.0f32,
 
             bits: Default::default(),
-            display: Default::default(),
+            display: Display::Block,
             white_space: Default::default(),
             opacity: 1.0,
             margin_top: Dimension::Zero,
@@ -604,6 +654,8 @@ impl Default for StyleContext {
             bg_position: Default::default(),
             bg_repeat: Default::default(),
             bg_size: Default::default(),
+
+            //TODO we need other border properties separated out
             border_top_left_radius: Dimension::Zero,
             border_top_right_radius: Dimension::Zero,
             border_bottom_left_radius: Dimension::Zero,

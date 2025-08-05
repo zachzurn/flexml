@@ -1,13 +1,15 @@
 use crate::styles::context::StyleContext;
-use crate::styles::builtin::{apply_dimension, BuiltInStyle};
+use crate::styles::builtin::{dimension_to_context, BuiltInStyle};
 use crate::styles::style::StyleValue;
 use crate::styles::style::StyleValueParser::Number;
 
 fn apply_padding(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.padding_top);
-    apply_dimension(value, &mut context.padding_bottom);
-    apply_dimension(value, &mut context.padding_left);
-    apply_dimension(value, &mut context.padding_right);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_padding_top(d);
+        context.set_padding_bottom(d);
+        context.set_padding_left(d);
+        context.set_padding_right(d);
+    }
 }
 
 pub static PADDING: BuiltInStyle = BuiltInStyle {
@@ -18,7 +20,9 @@ pub static PADDING: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_padding_top(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.padding_top);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_padding_top(d);
+    }
 }
 
 pub static PADDING_TOP: BuiltInStyle = BuiltInStyle {
@@ -29,7 +33,9 @@ pub static PADDING_TOP: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_padding_right(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.padding_right);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_padding_right(d);
+    }
 }
 
 pub static PADDING_RIGHT: BuiltInStyle = BuiltInStyle {
@@ -40,7 +46,9 @@ pub static PADDING_RIGHT: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_padding_bottom(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.padding_bottom);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_padding_bottom(d);
+    }
 }
 
 pub static PADDING_BOTTOM: BuiltInStyle = BuiltInStyle {
@@ -51,7 +59,9 @@ pub static PADDING_BOTTOM: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_padding_left(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.padding_left);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_padding_left(d);
+    }
 }
 
 pub static PADDING_LEFT: BuiltInStyle = BuiltInStyle {

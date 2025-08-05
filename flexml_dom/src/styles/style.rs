@@ -67,6 +67,7 @@ pub struct RawStyle<'a> {
 }
 
 impl RawStyle<'_> {
+    #[allow(dead_code)]
     pub fn new<'a>(name: &'a str, value: Option<&'a str>) -> RawStyle<'a> {
         RawStyle {
             name,
@@ -114,7 +115,7 @@ impl StyleValueParser {
             StyleValueParser::Color => Self::parse_color(s),
             StyleValueParser::Number => Self::parse_number(s),
             StyleValueParser::PositiveNumber => Self::parse_positive_number(s),
-            StyleValueParser::Url(kind) => Self::parse_url(&kind, s),
+            StyleValueParser::Url(kind) => Self::parse_url(kind, s),
             StyleValueParser::Float => Self::parse_float(s),
         }
     }
@@ -151,7 +152,7 @@ impl StyleValueParser {
             StyleValue::Invalid(..) => value,
 
             // Empty or any other value in this case indicates a bad format, so we convert to invalid
-            _ => StyleValue::Invalid(ValueErrors::NUMBER, ValueHelp::POSITIVE_NUMBER),
+            _ => StyleValue::Invalid(ValueErrors::NUMBER, ValueHelp::NUMBER),
         }
     }
 

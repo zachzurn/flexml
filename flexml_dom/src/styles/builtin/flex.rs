@@ -1,19 +1,24 @@
 use crate::styles::context::{AlignContent, AlignItems, AlignSelf, Dimension, FlexDirection, FlexWrap, JustifyContent, StyleContext};
-use crate::styles::builtin::{apply_dimension, apply_float, apply_length, apply_match_style, BuiltInStyle};
+use crate::styles::builtin::{dimension_to_context, float_to_context, length_to_context, style_context_match, BuiltInStyle};
 use crate::styles::style::{StyleValue};
 use crate::styles::style::StyleValueParser::{Float, MatchOrFloat, Match, Number};
 
 
+const ALIGN_CONTENT_VARIANTS: &[AlignContent] = &[
+    AlignContent::FlexStart,
+    AlignContent::FlexEnd,
+    AlignContent::Center,
+    AlignContent::SpaceBetween,
+    AlignContent::SpaceAround,
+    AlignContent::Stretch,
+];
+
 fn apply_align_content(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.align_content, &[
-        AlignContent::FlexStart,
-        AlignContent::FlexEnd,
-        AlignContent::Center,
-        AlignContent::SpaceBetween,
-        AlignContent::SpaceAround,
-        AlignContent::Stretch,
-    ])
+    if let Some(v) = style_context_match(value, ALIGN_CONTENT_VARIANTS) {
+        context.set_align_content(v);
+    }
 }
+
 
 pub static ALIGN_CONTENT: BuiltInStyle = BuiltInStyle {
     name: "alignContent",
@@ -35,13 +40,17 @@ pub static ALIGN_CONTENT: BuiltInStyle = BuiltInStyle {
 
 
 
+const FLEX_DIRECTION_VARIANTS: &[FlexDirection] = &[
+    FlexDirection::Row,
+    FlexDirection::RowReverse,
+    FlexDirection::Column,
+    FlexDirection::ColumnReverse,
+];
+
 fn apply_flex_direction(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.flex_direction, &[
-        FlexDirection::Row,
-        FlexDirection::RowReverse,
-        FlexDirection::Column,
-        FlexDirection::ColumnReverse,
-    ])
+    if let Some(v) = style_context_match(value, FLEX_DIRECTION_VARIANTS) {
+        context.set_flex_direction(v);
+    }
 }
 
 pub static FLEX_DIRECTION: BuiltInStyle = BuiltInStyle {
@@ -56,12 +65,15 @@ pub static FLEX_DIRECTION: BuiltInStyle = BuiltInStyle {
 };
 
 
+pub static FLEX_BASIS_VARIANTS: &[Dimension] = &[
+    Dimension::Auto,
+    Dimension::Content
+];
 
 fn apply_flex_basis(value: &StyleValue, context: &mut StyleContext) {
-    apply_length(value, &mut context.flex_basis, &[
-        Dimension::Auto,
-        Dimension::Content
-    ])
+    if let Some(d) = length_to_context(value, FLEX_BASIS_VARIANTS) {
+        context.set_flex_basis(d);
+    }
 }
 
 pub static FLEX_BASIS: BuiltInStyle = BuiltInStyle {
@@ -76,7 +88,9 @@ pub static FLEX_BASIS: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_flex_grow(value: &StyleValue, context: &mut StyleContext) {
-    apply_float(value, &mut context.flex_grow);
+    if let Some(f) = float_to_context(value) {
+        context.set_flex_grow(f);
+    }
 }
 
 pub static FLEX_GROW: BuiltInStyle = BuiltInStyle {
@@ -90,7 +104,9 @@ pub static FLEX_GROW: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_flex_shrink(value: &StyleValue, context: &mut StyleContext) {
-    apply_float(value, &mut context.flex_grow);
+    if let Some(f) = float_to_context(value) {
+        context.set_flex_shrink(f);
+    }
 }
 
 pub static FLEX_SHRINK: BuiltInStyle = BuiltInStyle {
@@ -104,12 +120,16 @@ pub static FLEX_SHRINK: BuiltInStyle = BuiltInStyle {
 
 
 
+const FLEX_WRAP_VARIANTS: &[FlexWrap] = &[
+    FlexWrap::NoWrap,
+    FlexWrap::Wrap,
+    FlexWrap::WrapReverse,
+];
+
 fn apply_flex_wrap(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.flex_wrap, &[
-        FlexWrap::NoWrap,
-        FlexWrap::Wrap,
-        FlexWrap::WrapReverse
-    ]);
+    if let Some(v) = style_context_match(value, FLEX_WRAP_VARIANTS) {
+        context.set_flex_wrap(v);
+    }
 }
 
 pub static FLEX_WRAP: BuiltInStyle = BuiltInStyle {
@@ -124,7 +144,9 @@ pub static FLEX_WRAP: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_column_gap(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.column_gap);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_column_gap(d);
+    }
 }
 
 pub static COLUMN_GAP: BuiltInStyle = BuiltInStyle {
@@ -135,14 +157,18 @@ pub static COLUMN_GAP: BuiltInStyle = BuiltInStyle {
 };
 
 
+const ALIGN_ITEMS_VARIANTS: &[AlignItems] = &[
+    AlignItems::FlexStart,
+    AlignItems::FlexEnd,
+    AlignItems::Center,
+    AlignItems::Baseline,
+    AlignItems::Stretch,
+];
+
 fn apply_align_items(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.align_items, &[
-        AlignItems::FlexStart,
-        AlignItems::FlexEnd,
-        AlignItems::Center,
-        AlignItems::Baseline,
-        AlignItems::Stretch,
-    ])
+    if let Some(v) = style_context_match(value, ALIGN_ITEMS_VARIANTS) {
+        context.set_align_items(v);
+    }
 }
 
 pub static ALIGN_ITEMS: BuiltInStyle = BuiltInStyle {
@@ -156,16 +182,21 @@ pub static ALIGN_ITEMS: BuiltInStyle = BuiltInStyle {
 };
 
 
+const ALIGN_SELF_VARIANTS: &[AlignSelf] = &[
+    AlignSelf::Auto,
+    AlignSelf::FlexStart,
+    AlignSelf::FlexEnd,
+    AlignSelf::Center,
+    AlignSelf::Baseline,
+    AlignSelf::Stretch,
+];
+
 fn apply_align_self(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.align_self, &[
-        AlignSelf::Auto,
-        AlignSelf::FlexStart,
-        AlignSelf::FlexEnd,
-        AlignSelf::Center,
-        AlignSelf::Baseline,
-        AlignSelf::Stretch,
-    ])
+    if let Some(v) = style_context_match(value, ALIGN_SELF_VARIANTS) {
+        context.set_align_self(v);
+    }
 }
+
 
 pub static ALIGN_SELF: BuiltInStyle = BuiltInStyle {
     name: "alignSelf",
@@ -179,7 +210,10 @@ pub static ALIGN_SELF: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_gap(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.gap);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_row_gap(d);
+        context.set_column_gap(d);
+    }
 }
 
 pub static GAP: BuiltInStyle = BuiltInStyle {
@@ -190,16 +224,21 @@ pub static GAP: BuiltInStyle = BuiltInStyle {
 };
 
 
+const JUSTIFY_CONTENT_VARIANTS: &[JustifyContent] = &[
+    JustifyContent::FlexStart,
+    JustifyContent::FlexEnd,
+    JustifyContent::Center,
+    JustifyContent::SpaceBetween,
+    JustifyContent::SpaceAround,
+    JustifyContent::SpaceEvenly,
+];
+
 fn apply_justify_content(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.justify_content, &[
-        JustifyContent::FlexStart,
-        JustifyContent::FlexEnd,
-        JustifyContent::Center,
-        JustifyContent::SpaceBetween,
-        JustifyContent::SpaceAround,
-        JustifyContent::SpaceEvenly
-    ])
+    if let Some(v) = style_context_match(value, JUSTIFY_CONTENT_VARIANTS) {
+        context.set_justify_content(v);
+    }
 }
+
 
 pub static JUSTIFY_CONTENT: BuiltInStyle = BuiltInStyle {
     name: "justifyContent",
@@ -220,7 +259,9 @@ pub static JUSTIFY_CONTENT: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_row_gap(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.row_gap);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_row_gap(d);
+    }
 }
 
 pub static ROW_GAP: BuiltInStyle = BuiltInStyle {

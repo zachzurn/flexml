@@ -1,14 +1,16 @@
 use crate::styles::context::{BorderStyle, StyleContext};
-use crate::styles::builtin::{apply_color, apply_dimension, apply_match_style, BuiltInStyle};
+use crate::styles::builtin::{dimension_to_context, style_context_color, style_context_match, BuiltInStyle};
 use crate::styles::style::StyleValue;
 use crate::styles::style::StyleValueParser::{Color, Match, Number};
 
 
 fn apply_border_radius(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.border_bottom_left_radius);
-    apply_dimension(value, &mut context.border_bottom_right_radius);
-    apply_dimension(value, &mut context.border_top_left_radius);
-    apply_dimension(value, &mut context.border_top_right_radius);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_border_top_left_radius(d);
+        context.set_border_top_right_radius(d);
+        context.set_border_bottom_left_radius(d);
+        context.set_border_bottom_right_radius(d);
+    }
 }
 
 pub static BORDER_RADIUS: BuiltInStyle = BuiltInStyle {
@@ -21,7 +23,9 @@ pub static BORDER_RADIUS: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_border_bottom_left_radius(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.border_bottom_left_radius);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_border_bottom_left_radius(d);
+    }
 }
 
 pub static BORDER_BOTTOM_LEFT_RADIUS: BuiltInStyle = BuiltInStyle {
@@ -33,7 +37,9 @@ pub static BORDER_BOTTOM_LEFT_RADIUS: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_border_bottom_right_radius(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.border_bottom_right_radius);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_border_bottom_right_radius(d);
+    }
 }
 
 pub static BORDER_BOTTOM_RIGHT_RADIUS: BuiltInStyle = BuiltInStyle {
@@ -44,7 +50,9 @@ pub static BORDER_BOTTOM_RIGHT_RADIUS: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_border_top_left_radius(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.border_top_left_radius);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_border_top_left_radius(d);
+    }
 }
 
 pub static BORDER_TOP_LEFT_RADIUS: BuiltInStyle = BuiltInStyle {
@@ -56,7 +64,9 @@ pub static BORDER_TOP_LEFT_RADIUS: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_border_top_right_radius(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.border_top_right_radius);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_border_top_right_radius(d);
+    }
 }
 
 pub static BORDER_TOP_RIGHT_RADIUS: BuiltInStyle = BuiltInStyle {
@@ -68,7 +78,9 @@ pub static BORDER_TOP_RIGHT_RADIUS: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_border_color(value: &StyleValue, context: &mut StyleContext) {
-    apply_color(value, &mut context.border_color);
+    if let Some(color) = style_context_color(value) {
+        context.set_border_color(color);
+    }
 }
 
 pub static BORDER_COLOR: BuiltInStyle = BuiltInStyle {
@@ -80,14 +92,19 @@ pub static BORDER_COLOR: BuiltInStyle = BuiltInStyle {
 
 
 
+const BORDER_STYLE_VARIANTS: &[BorderStyle] = &[
+    BorderStyle::Solid,
+    BorderStyle::Dashed,
+    BorderStyle::Dotted,
+    BorderStyle::None,
+];
+
 fn apply_border_style(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.border_style, &[
-        BorderStyle::Solid,
-        BorderStyle::Dashed,
-        BorderStyle::Dotted,
-        BorderStyle::None
-    ])
+    if let Some(v) = style_context_match(value, BORDER_STYLE_VARIANTS) {
+        context.set_border_style(v);
+    }
 }
+
 
 pub static BORDER_STYLE: BuiltInStyle = BuiltInStyle {
     name: "borderStyle",
@@ -103,7 +120,9 @@ pub static BORDER_STYLE: BuiltInStyle = BuiltInStyle {
 
 
 fn apply_border_width(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.border_width);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_border_width(d);
+    }
 }
 
 pub static BORDER_WIDTH: BuiltInStyle = BuiltInStyle {

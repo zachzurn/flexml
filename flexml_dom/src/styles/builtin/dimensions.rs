@@ -1,10 +1,12 @@
 use crate::styles::context::StyleContext;
-use crate::styles::builtin::{apply_dimension, BuiltInStyle};
+use crate::styles::builtin::{dimension_to_context, BuiltInStyle};
 use crate::styles::style::StyleValue;
 use crate::styles::style::StyleValueParser::{PositiveNumber};
 
 fn apply_width(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.width);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_width(d);
+    }
 }
 pub static WIDTH: BuiltInStyle = BuiltInStyle {
     name: "width",
@@ -14,7 +16,9 @@ pub static WIDTH: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_max_width(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.max_width);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_max_width(d);
+    }
 }
 pub static MAX_WIDTH: BuiltInStyle = BuiltInStyle {
     name: "maxWidth",
@@ -24,7 +28,9 @@ pub static MAX_WIDTH: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_min_width(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.min_width);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_min_width(d);
+    }
 }
 pub static MIN_WIDTH: BuiltInStyle = BuiltInStyle {
     name: "minWidth",
@@ -34,7 +40,9 @@ pub static MIN_WIDTH: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_height(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.height);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_height(d);
+    }
 }
 pub static HEIGHT: BuiltInStyle = BuiltInStyle {
     name: "height",
@@ -44,7 +52,9 @@ pub static HEIGHT: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_max_height(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.max_height);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_max_height(d);
+    }
 }
 pub static MAX_HEIGHT: BuiltInStyle = BuiltInStyle {
     name: "maxHeight",
@@ -54,7 +64,9 @@ pub static MAX_HEIGHT: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_min_height(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.min_height);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_min_height(d);
+    }
 }
 pub static MIN_HEIGHT: BuiltInStyle = BuiltInStyle {
     name: "minHeight",

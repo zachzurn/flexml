@@ -70,6 +70,7 @@ impl StyleRegistry {
         }
     }
 
+    #[allow(dead_code)]
     pub fn set_file_base_path(&mut self, base_path: &Url) {
         self.base_path = base_path.clone();
     }
@@ -80,6 +81,31 @@ impl StyleRegistry {
         registry
     }
 
+    pub fn debug_style_definition(&self, id: StyleId) -> String {
+        let definition = self.get_definition(id);
+
+        let mut info = vec![self.resolve_name(id).unwrap_or("No Style Defined = ").to_string()];
+
+        if let Some(atomics) = definition {
+            for atomic in atomics {
+                info.push(format!("{:?}: {:?}", self.resolve_name(atomic.id).unwrap_or("No atomic"), atomic.value));
+            }
+
+            info.join(", ")
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn debug_atomics(&self, atomics: &Vec<AtomicStyle>) -> String {
+        let mut info = vec![];
+        for atomic in atomics {
+            info.push(format!("{}: {:?}", self.resolve_name(atomic.id).unwrap_or("No atomic"), atomic.value));
+        }
+        info.join(", ")
+    }
+
+    #[allow(dead_code)]
     pub fn print_atomics(&self) {
         for builtin in &self.builtins {
             let description = match builtin.parser {
@@ -114,6 +140,11 @@ impl StyleRegistry {
     }
 
     /// Apply any root styles that were defined
+    /// This is where we ensure the root style  has concrete resolved
+    /// dimensions that are necessary for layout
+    ///
+    /// Users can set properties on the root style and
+    /// some properties would break page layout
     pub fn resolve_root_style(&self, root: &mut StyleContext) {
         // Mark the root style as being the root style
         // This way atomic builtins that only appy to root
@@ -141,20 +172,23 @@ impl StyleRegistry {
         let min_dpi = StyleContext::min_dpi();
 
         if !root.has_bg_color() {
-            root.bg_color = Color(255,255,255,255);
+            root.set_bg_color(Color(255,255,255,255));
         }
 
         //Ensure sane values
-        root.dpi = min_dpi.max(root.dpi).round();
-        root.width = Resolved(min_width.max(root.width.to_pixels(default_width, default_font_size,default_font_size,root.dpi)).round());
-        root.height = Resolved(min_height.max(root.height.to_pixels(default_height, default_font_size,default_font_size,root.dpi)).round());
+        root.set_dpi(min_dpi.max(root.dpi()).round());
+        root.set_width(Resolved(min_width.max(root.width().to_pixels(default_width, default_font_size,default_font_size,root.dpi())).round()));
+        root.set_height(Resolved(min_height.max(root.height().to_pixels(default_height, default_font_size,default_font_size,root.dpi())).round()));
 
         // Set resolved font sizes. These are needed for dimension calculations involving rem or em
-        root.resolved_font_size = min_font_size.max(root.font_size.to_pixels(default_font_size, default_font_size, default_font_size, root.dpi));
-        root.resolved_root_font_size = root.resolved_font_size;
+        root.set_resolved_font_size(min_font_size.max(root.font_size().to_pixels(default_font_size, default_font_size, default_font_size, root.dpi())));
+        root.set_resolved_root_font_size(root.resolved_font_size());
     }
 
+    /// Resolve local atomic styles and cascade
+    /// styles from the parent style
     pub fn resolve_style(&self, parent: &StyleContext, styles: &[AtomicStyle]) -> StyleContext {
+
         let mut context = StyleContext::default();
 
         // First set the styles
@@ -193,6 +227,7 @@ impl StyleRegistry {
     }
 
     /// Resolves a StyleId back to its string name.
+    #[allow(dead_code)]
     pub fn resolve_name(&self, id: StyleId) -> Option<&str> {
         self.names.get(id).map(|s| s.as_str())
     }
@@ -267,6 +302,7 @@ impl StyleRegistry {
         }
     }
 
+    #[allow(dead_code)]
     pub fn register_raw_style(&mut self, style_name: &str, entries: Vec<RawStyle>) -> RegisteredStyle {
         let (atomics, forwards) = self.expand_raw_styles(&entries);
         self.register_style(style_name, atomics, forwards)
@@ -283,7 +319,7 @@ impl StyleRegistry {
         // Atomic styles are inserted with parsed values
         // Defined styles are expanded from already expanded styles
         // We reverse the order so the later styles get precedence
-        entries.into_iter().rev().for_each(|raw| {
+        entries.iter().rev().for_each(|raw| {
             // Names starting with > are considered forwarded
             let forward = raw.name.starts_with(Chars::FORWARD);
             let clean_name = if forward { raw.name.trim_start_matches(Chars::FORWARD) } else { raw.name };
@@ -307,8 +343,9 @@ impl StyleRegistry {
             } else {
                 let existing_style = self.definitions.get(&id);
 
+                // Gather atomic styles and set
                 if let Some(styles) = existing_style {
-                    styles.into_iter().rev().for_each(|entry| {
+                    styles.iter().rev().for_each(|entry| {
 
                         // Insert if it hasn't already been defined
                         if !atomic_set.contains(&entry.id) {
@@ -320,17 +357,22 @@ impl StyleRegistry {
 
                 // When a value is passed to a style definition it is forwarded
                 // to its own atomic entries. values are separated with ">"
-                if let Some(raw_value) = raw.value {
-                    if let Some(forwarders) = self.forwarders.get(&id) {
-                        let fwd = forwarders.clone();
-                        for (i, value) in raw_value.split(Chars::FORWARD).enumerate() {
-                            if let Some(forwards_to) = fwd.get(i) {
-                                if self.is_atomic(forwards_to) && !atomic_set.contains(forwards_to) {
-                                    let forward_value = self.builtins[*forwards_to].parser.parse(value);
-                                    atomic_set.insert(*forwards_to);
-                                    atomic_styles.push(AtomicStyle { id: *forwards_to, value: self.transform_value(forward_value) });
-                                }
-                            }
+                // forwarded values are raw unparsed strings
+                if let (Some(raw_value), Some(fwd)) = (raw.value, self.forwarders.get(&id).cloned()) {
+                    // Example forward #FF0000 > bold
+                    for (i, value) in raw_value.split(Chars::FORWARD).enumerate() {
+                        // Forwards can only forward to atomic styles and must not be set already
+                        if let Some(&forwards_to) = fwd.get(i)
+                            && self.is_atomic(&forwards_to)
+                            && !atomic_set.contains(&forwards_to)
+                        {
+                            // We use the atomic parser to parse the expected value
+                            let forward_value = self.builtins[forwards_to].parser.parse(value);
+                            atomic_set.insert(forwards_to);
+                            atomic_styles.push(AtomicStyle {
+                                id: forwards_to,
+                                value: self.transform_value(forward_value),
+                            });
                         }
                     }
                 }
@@ -345,6 +387,7 @@ impl StyleRegistry {
 
     /// File type style values need to hold a file reference, so we handle
     /// interning and storing here
+    // TODO implement font name interning or lookup
     fn transform_value(&mut self, value: StyleValue) -> StyleValue {
         match value {
             StyleValue::FontUrl(font_url) => {
@@ -373,16 +416,19 @@ impl StyleRegistry {
 
     /// Retrieves the definition for a given alias StyleId.
     /// Returns `Some(&Vec<StyleId>)` if the ID corresponds to a registered alias, `None` otherwise.
+    #[allow(dead_code)]
     pub fn get_definition(&self, id: StyleId) -> Option<&Vec<AtomicStyle>> {
         self.definitions.get(&id)
     }
 
+    #[inline(always)]
     pub fn is_atomic(&self, id: &StyleId) -> bool {
-        return id < &self.first_style;
+        id < &self.first_style
     }
 
     /// Is this style id a builtin
+    #[inline(always)]
     pub fn is_custom(&self, id: &StyleId) -> bool {
-        return id >= &self.first_custom_style;
+        id >= &self.first_custom_style
     }
 }

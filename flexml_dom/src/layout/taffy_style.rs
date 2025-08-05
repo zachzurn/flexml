@@ -97,50 +97,50 @@ fn to_taffy_align_content(ac: AlignContent) -> Option<taffy::style::AlignContent
 
 pub (super) fn style_context_to_taffy(style_context: &StyleContext) -> taffy::style::Style {
 
-    let dpi = style_context.dpi;
-    let rem = style_context.resolved_root_font_size;
-    let em = style_context.resolved_font_size;
+    let dpi = style_context.dpi();
+    let rem = style_context.resolved_root_font_size();
+    let em = style_context.resolved_font_size();
 
     taffy::style::Style {
-        display: to_taffy_display(style_context.display),
+        display: to_taffy_display(style_context.display()),
 
         margin: taffy::geometry::Rect {
-            left: to_taffy_lpa(rem, em, dpi, style_context.margin_left),
-            right: to_taffy_lpa(rem, em, dpi, style_context.margin_right),
-            top: to_taffy_lpa(rem, em, dpi, style_context.margin_top),
-            bottom: to_taffy_lpa(rem, em, dpi, style_context.margin_bottom),
+            left: to_taffy_lpa(rem, em, dpi, style_context.margin_left()),
+            right: to_taffy_lpa(rem, em, dpi, style_context.margin_right()),
+            top: to_taffy_lpa(rem, em, dpi, style_context.margin_top()),
+            bottom: to_taffy_lpa(rem, em, dpi, style_context.margin_bottom()),
         },
 
         padding: taffy::geometry::Rect {
-            left: to_taffy_lp(rem, em, dpi, style_context.padding_left),
-            right: to_taffy_lp(rem, em, dpi, style_context.padding_right),
-            top: to_taffy_lp(rem, em, dpi, style_context.padding_top),
-            bottom: to_taffy_lp(rem, em, dpi, style_context.padding_bottom),
+            left: to_taffy_lp(rem, em, dpi, style_context.padding_left()),
+            right: to_taffy_lp(rem, em, dpi, style_context.padding_right()),
+            top: to_taffy_lp(rem, em, dpi, style_context.padding_top()),
+            bottom: to_taffy_lp(rem, em, dpi, style_context.padding_bottom()),
         },
 
         border: taffy::geometry::Rect {
-            left: to_taffy_lp(rem, em, dpi, style_context.border_width),  // assuming uniform border width
-            right: to_taffy_lp(rem, em, dpi, style_context.border_width),
-            top: to_taffy_lp(rem, em, dpi, style_context.border_width),
-            bottom: to_taffy_lp(rem, em, dpi, style_context.border_width),
+            left: to_taffy_lp(rem, em, dpi, style_context.border_width()),
+            right: to_taffy_lp(rem, em, dpi, style_context.border_width()),
+            top: to_taffy_lp(rem, em, dpi, style_context.border_width()),
+            bottom: to_taffy_lp(rem, em, dpi, style_context.border_width()),
         },
 
-        flex_direction: to_taffy_flex_direction(style_context.flex_direction),
-        flex_wrap: to_taffy_flex_wrap(style_context.flex_wrap),
-        justify_content: to_taffy_justify_content(style_context.justify_content),
-        align_items: to_taffy_align_items(style_context.align_items),
+        flex_direction: to_taffy_flex_direction(style_context.flex_direction()),
+        flex_wrap: to_taffy_flex_wrap(style_context.flex_wrap()),
+        justify_content: to_taffy_justify_content(style_context.justify_content()),
+        align_items: to_taffy_align_items(style_context.align_items()),
         align_self: None,
         justify_items: None,
         justify_self: None,
-        align_content: to_taffy_align_content(style_context.align_content),
+        align_content: to_taffy_align_content(style_context.align_content()),
 
-        flex_grow: style_context.flex_grow,
-        flex_shrink: style_context.flex_shrink,
-        flex_basis: to_taffy_dimension(rem, em, dpi, style_context.flex_basis),
+        flex_grow: style_context.flex_grow(),
+        flex_shrink: style_context.flex_shrink(),
+        flex_basis: to_taffy_dimension(rem, em, dpi, style_context.flex_basis()),
 
-        size: to_taffy_size(rem, em, dpi, style_context.width, style_context.height),
-        min_size: to_taffy_size(rem, em, dpi, style_context.min_width, style_context.min_height),
-        max_size: to_taffy_size(rem, em, dpi, style_context.max_width, style_context.max_height),
+        size: to_taffy_size(rem, em, dpi, style_context.width(), style_context.height()),
+        min_size: to_taffy_size(rem, em, dpi, style_context.min_width(), style_context.min_height()),
+        max_size: to_taffy_size(rem, em, dpi, style_context.max_width(), style_context.max_height()),
 
         item_is_table: false,
         item_is_replaced: false,

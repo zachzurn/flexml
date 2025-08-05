@@ -20,81 +20,61 @@ pub struct BuiltInStyle {
     pub apply_style: fn(&StyleValue, &mut StyleContext),
 }
 
-
-/// Helper for match type styles
-fn apply_match_style<T>(
+fn style_context_match<T>(
     value: &StyleValue,
-    context_field: &mut T,
     variants: &[T],
-) where
+) -> Option<T> where
     T: Copy,
 {
-    if let StyleValue::Match(i) = value {
-        if let Some(val) = variants.get(*i as usize) {
-            *context_field = *val;
-        }
+    if let StyleValue::Match(i) = value && let Some(val) = variants.get(*i as usize) {
+        Some(*val)
+    } else{
+      None
+   }
+}
+
+fn style_context_color(value: &StyleValue) -> Option<Color> {
+    if let StyleValue::Color(c) = value {
+        Some(Color(c.r,c.g,c.b,c.a))
+    } else {
+        None
     }
 }
 
-fn apply_color(
-    value: &StyleValue,
-    context_field: &mut Color,
-) {
-    match value {
-        StyleValue::Color(c) => {
-            *context_field = Color(c.r,c.g,c.b,c.a);
-        },
-        _ => return
-    }
-}
-
-fn apply_float(
-    value: &StyleValue,
-    context_field: &mut f32,
-) {
-    match value {
-        StyleValue::Float(v) => {
-            *context_field = *v;
-        },
-        _ => return
-    }
-}
-
-
-fn apply_dimension(
-    value: &StyleValue,
-    context_field: &mut Dimension,
-) {
+fn dimension_to_context(value: &StyleValue) -> Option<Dimension> {
     match value {
         StyleValue::PositiveNumber(dimension) |
         StyleValue::NegativeNumber(dimension)
-        => *context_field = dimension.clone(),
-        _ => return
+        => Some(*dimension),
+        _ => None
     }
 }
 
+fn float_to_context(value: &StyleValue) -> Option<f32> {
+    if let StyleValue::Float(f) = value { Some(*f) }
+    else { None }
+}
 
-fn apply_length(
-    value: &StyleValue,
-    context_field: &mut Dimension,
-    variants: &[Dimension],
-) {
+
+fn length_to_context(value: &StyleValue, variants: &[Dimension]) -> Option<Dimension> {
     match value {
         StyleValue::PositiveNumber(dimension) |
         StyleValue::NegativeNumber(dimension)
-        => *context_field = dimension.clone(),
+        => Some(*dimension),
         StyleValue::Match(i) => {
             if let Some(val) = variants.get(*i as usize) {
-                *context_field = *val;
+               Some(*val)
+            } else {
+                None
             }
         }
-        _ => return
+        _ => None
     }
 }
 
 pub static ROOT_STYLE_NAME: &str = "PAGE";
 
-pub static DEFAULT_BUILTINS : &[&'static BuiltInStyle] = &[
+pub static DEFAULT_BUILTINS : &[&BuiltInStyle] = &[
     &page::PAGE_HEIGHT,
     &page::PAGE_WIDTH,
     &page::PAGE_DPI,

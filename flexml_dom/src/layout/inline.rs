@@ -1,34 +1,36 @@
-use std::ops::Range;
-use parley::{Alignment, AlignmentOptions, FontWeight, InlineBox, LineHeight, StyleProperty};
-use taffy::{compute_leaf_layout, AvailableSpace, LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Point, Size, SizingMode};
 use crate::layout::tree::{LayoutNodeKind, LayoutTree};
 use crate::styles::context::{FontStyle, StyleContext};
+use parley::{Alignment, AlignmentOptions, FontWeight, InlineBox, LineHeight, StyleProperty};
+use std::ops::Range;
+use taffy::{LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Point, Size};
 
 fn parley_style<'a>(style: &StyleContext) -> Vec<StyleProperty<'a, [u8; 4]>> {
-    let em = style.resolved_font_size;
-    let rem = style.resolved_root_font_size;
-    let dpi = style.dpi;
+    let em = style.resolved_font_size();
+    let rem = style.resolved_root_font_size();
+    let dpi = style.dpi();
 
-    let font_style = match style.font_style {
+    let font_style = match style.font_style() {
         FontStyle::Normal => parley::FontStyle::Normal,
         FontStyle::Italic => parley::FontStyle::Italic,
         FontStyle::Oblique => parley::FontStyle::Oblique(None)
     };
 
+    let color = style.color();
+
     vec![
-        StyleProperty::FontSize(style.resolved_font_size),
-        StyleProperty::LineHeight(LineHeight::Absolute(style.line_height.to_pixels(em, rem, em, dpi))),
-        StyleProperty::LetterSpacing(style.letter_spacing.to_pixels(em, rem, em, dpi)),
-        StyleProperty::FontWeight(FontWeight::new(style.font_weight as f32)),
+        StyleProperty::FontSize(style.resolved_font_size()),
+        StyleProperty::LineHeight(LineHeight::Absolute(style.line_height().to_pixels(em, rem, em, dpi))),
+        StyleProperty::LetterSpacing(style.letter_spacing().to_pixels(em, rem, em, dpi)),
+        StyleProperty::FontWeight(FontWeight::new(style.font_weight() as f32)),
         StyleProperty::FontStyle(font_style),
-        StyleProperty::Brush([style.color.0, style.color.1, style.color.2, style.color.3]),
+        StyleProperty::Brush([color.0, color.1, color.2, color.3]),
         // TODO add other styles
     ]
 }
 
 enum InlineItemBuilder<'a> {
     Text{range: Range<usize>, styles: Vec<StyleProperty<'a, [u8; 4]>>},
-    Inline{id: u64, index: usize, width: f32, height: f32},
+    Inline{id: NodeId, index: usize, width: f32, height: f32},
 }
 
 /// Layout an inline container.
@@ -38,7 +40,7 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
     let mut i_items: Vec<InlineItemBuilder> = Vec::new();
 
     for child_id in tree.node_from_id(node_id).children.clone() {
-        let child_node = tree.node_from_id(NodeId::from(child_id));
+        let child_node = tree.node_from_id(child_id);
         match child_node.kind {
             LayoutNodeKind::Text => {
                 if let Some(text) = &child_node.text {
@@ -52,13 +54,11 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
             LayoutNodeKind::Container => {
                 let inline_index = i_text.len();
 
-                let layout = tree.compute_child_layout(NodeId::from(child_id), inputs);
-                //tree.compute_layout(child_id, inline_block.available_space, true);
-                //let layout = tree.node_from_id(NodeId::from(child_id)).final_layout;
+                let layout = tree.compute_child_layout(child_id, inputs);
                 let width = layout.content_size.width;
                 let height = layout.content_size.height;
 
-                i_items.push(InlineItemBuilder::Inline { id: child_id as u64, index: inline_index, width, height });
+                i_items.push(InlineItemBuilder::Inline { id: child_id, index: inline_index, width, height });
             }
 
             // Inline content should only contain Containers and Text
@@ -73,7 +73,7 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
         match i_item {
             InlineItemBuilder::Inline { id, index, width, height } => {
                 builder.push_inline_box(InlineBox{
-                    id, width, height, index
+                    id: id.into(), width, height, index
                 });
             },
             InlineItemBuilder::Text { range, styles } => {

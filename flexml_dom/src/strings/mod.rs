@@ -13,7 +13,6 @@ impl ValueHelp {
 pub struct ValueErrors;
 
 impl ValueErrors {
-    pub const PERCENT: &'static str = "Invalid percent value";
     pub const NUMBER: &'static str = "Invalid number";
     pub const MATCH: &'static str = "Invalid value";
     pub const FATAL_MATCH: &'static str = "Fatal error when matching";

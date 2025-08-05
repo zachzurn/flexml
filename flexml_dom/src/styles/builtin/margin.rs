@@ -1,13 +1,15 @@
 use crate::styles::context::StyleContext;
-use crate::styles::builtin::{apply_dimension, BuiltInStyle};
+use crate::styles::builtin::{dimension_to_context, BuiltInStyle};
 use crate::styles::style::StyleValue;
 use crate::styles::style::StyleValueParser::Number;
 
 fn apply_margin(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.margin_top);
-    apply_dimension(value, &mut context.margin_bottom);
-    apply_dimension(value, &mut context.margin_left);
-    apply_dimension(value, &mut context.margin_right);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_margin_top(d);
+        context.set_margin_bottom(d);
+        context.set_margin_left(d);
+        context.set_margin_right(d);
+    }
 }
 
 pub static MARGIN: BuiltInStyle = BuiltInStyle {
@@ -18,7 +20,9 @@ pub static MARGIN: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_margin_top(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.margin_top);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_margin_top(d);
+    }
 }
 
 pub static MARGIN_TOP: BuiltInStyle = BuiltInStyle {
@@ -29,7 +33,9 @@ pub static MARGIN_TOP: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_margin_right(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.margin_right);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_margin_right(d);
+    }
 }
 
 pub static MARGIN_RIGHT: BuiltInStyle = BuiltInStyle {
@@ -40,7 +46,9 @@ pub static MARGIN_RIGHT: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_margin_bottom(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.margin_bottom);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_margin_bottom(d);
+    }
 }
 
 pub static MARGIN_BOTTOM: BuiltInStyle = BuiltInStyle {
@@ -51,7 +59,9 @@ pub static MARGIN_BOTTOM: BuiltInStyle = BuiltInStyle {
 };
 
 fn apply_margin_left(value: &StyleValue, context: &mut StyleContext) {
-    apply_dimension(value, &mut context.margin_left);
+    if let Some(d) = dimension_to_context(value) {
+        context.set_margin_left(d);
+    }
 }
 
 pub static MARGIN_LEFT: BuiltInStyle = BuiltInStyle {

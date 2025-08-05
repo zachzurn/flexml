@@ -3,20 +3,20 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use anyhow::{bail, Result};
-use vello::kurbo::{Affine, Rect, RoundedRect, RoundedRectRadii, Stroke};
+use vello::kurbo::{Affine, RoundedRect, RoundedRectRadii, Stroke};
 use vello::peniko::{Color, Fill};
 use vello::util::{block_on_wgpu, RenderContext};
-use vello::{kurbo, Scene};
 use vello::RendererOptions;
+use vello::{kurbo, Scene};
 
 use flexml_dom::layout::fragments::{FragmentGroup, Rect as FragmentRect};
 
+use flexml_dom::layout::fragments::FragmentKind;
+use flexml_dom::layout::{FlexmlLayout};
 use wgpu::{
     BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Extent3d, TextureDescriptor,
     TextureFormat, TextureUsages,
 };
-use flexml_dom::layout::{FlexmlLayout, FlexmlLayoutContext, FlexmlPage};
-use flexml_dom::layout::fragments::{Fragment, FragmentKind, GlyphRunFragment};
 
 fn kurbo_rect_from_bounds(bounds: &FragmentRect) -> kurbo::Rect {
     kurbo::Rect::new(
@@ -27,7 +27,7 @@ fn kurbo_rect_from_bounds(bounds: &FragmentRect) -> kurbo::Rect {
     )
 }
 
-fn render_fragment_group(scene: &mut Scene, context: &FlexmlLayoutContext, group: &FragmentGroup) {
+fn render_fragment_group(scene: &mut Scene, group: &FragmentGroup) {
     for fragment in &group.fragments {
         match &fragment.kind {
             FragmentKind::ColorBackground { color, radius } => {
@@ -91,20 +91,9 @@ fn render_fragment_group(scene: &mut Scene, context: &FlexmlLayoutContext, group
                 );
             }
             FragmentKind::Text(glyph_run) => {
-                // Map Parley Glyphs to Vello Glyphs with absolute position
-                let vello_glyphs: Vec<vello::Glyph> = glyph_run
-                    .glyphs
-                    .iter()
-                    .map(|g| vello::Glyph {
-                        id: g.id as u32,
-                        x: g.x + fragment.bounds.x,
-                        y: g.y + fragment.bounds.y,
-                    })
-                    .collect();
-
                 // Use the style color (assuming style stores RGBA u8 slice)
                 let rgba = glyph_run.style.brush;
-                let color = vello::peniko::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+                let color = Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
 
                 // Handles faux skewing
                 let glyph_xform = glyph_run.synthesis
@@ -114,6 +103,18 @@ fn render_fragment_group(scene: &mut Scene, context: &FlexmlLayoutContext, group
                 let mut cursor_x = fragment.bounds.x;
                 let cursor_y = fragment.bounds.y + glyph_run.baseline;
 
+                let glyphs = glyph_run.glyphs.iter().map(|glyph| {
+                    let gx = cursor_x + glyph.x;
+                    let gy = cursor_y - glyph.y;
+                    cursor_x += glyph.advance;
+
+                    vello::Glyph {
+                        id: glyph.id as u32,
+                        x: gx,
+                        y: gy,
+                    }
+                });
+
                 scene
                     .draw_glyphs(&glyph_run.font)
                     .brush(color)
@@ -122,26 +123,13 @@ fn render_fragment_group(scene: &mut Scene, context: &FlexmlLayoutContext, group
                     .glyph_transform(glyph_xform)
                     .font_size(glyph_run.font_size)
                     .normalized_coords(glyph_run.normalized_coords.as_slice())
-                    .draw(
-                        Fill::NonZero,
-                        glyph_run.glyphs.iter().map(|glyph| {
-                            let gx = cursor_x + glyph.x;
-                            let gy = cursor_y - glyph.y;
-                            cursor_x += glyph.advance;
-
-                            vello::Glyph {
-                                id: glyph.id as u32,
-                                x: gx,
-                                y: gy,
-                            }
-                        }),
-                    );
+                    .draw(Fill::NonZero, glyphs);
             }
         }
     }
 
     for subgroup in &group.subgroups {
-        render_fragment_group(scene, context, subgroup);
+        render_fragment_group(scene, subgroup);
     }
 }
 
@@ -168,7 +156,7 @@ pub async fn render_layout(layout: &FlexmlLayout) -> Result<()> {
 
     for group in &layout.pages[0].fragments {
         group.print_tree("FRAGMENT GROUP");
-        render_fragment_group(&mut scene, &layout.context, group);
+        render_fragment_group(&mut scene, group);
     }
 
     let width = layout.page_width as u32;
@@ -237,7 +225,7 @@ pub async fn render_layout(layout: &FlexmlLayout) -> Result<()> {
     let slice = buffer.slice(..);
     let (send, recv) = futures_intrusive::channel::shared::oneshot_channel();
     slice.map_async(wgpu::MapMode::Read, move |v| send.send(v).unwrap());
-    block_on_wgpu(device, recv.receive()).unwrap().unwrap();
+    block_on_wgpu(device, recv.receive()).unwrap()?;
     let data = slice.get_mapped_range();
 
     // Remove padding
@@ -265,18 +253,21 @@ pub async fn render_layout(layout: &FlexmlLayout) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use flexml_dom::document::parser::FlexmlDocument;
     use flexml_dom::layout::{FlexmlLayout, FlexmlLayoutContext};
-    use super::*;
 
     #[test]
     fn test_render_box_scene() -> Result<()> {
         //let input = "[width: 5in + height: 2in + bgColor: #ff0000AA this is some text \r\n and some more on a new line] [box + bgColor: #00FF00AA + height: 1in]";
 
-        let input = "[color: #ff0000 We have 😄 some [bold Bold like ] text! ]";
+        let input = "[paddingLeft: 20px + width: 250px + bgColor: #0000FF0A + color: #ff0000 We have 😄 some [bold + color: #FF00FF Purple ] text that should wrap onto a new line [display: inline-block this is inline block] with some inline content here [italic which is italic ] ]";
 
         let document = FlexmlDocument::new(input)
             .parse();
+
+
+        document.print_nodes();
 
         let layout = FlexmlLayout::new(&document, FlexmlLayoutContext::default());
 

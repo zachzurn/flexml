@@ -1,10 +1,10 @@
-use taffy::util::print_tree;
-use taffy::{compute_block_layout, compute_cached_layout, compute_flexbox_layout, compute_leaf_layout, compute_root_layout, prelude::*, round_layout, Cache, CacheTree, LayoutOutput};
-use crate::layout::FlexmlLayoutContext;
-use crate::layout::inline::{compute_inline_layout};
+use crate::layout::inline::compute_inline_layout;
 use crate::layout::taffy_style::style_context_to_taffy;
+use crate::layout::FlexmlLayoutContext;
 use crate::styles::context::StyleContext;
-use crate::styles::{context, style};
+use crate::styles::context;
+use taffy::util::print_tree;
+use taffy::{compute_block_layout, compute_cached_layout, compute_flexbox_layout, compute_root_layout, prelude::*, round_layout, Cache, CacheTree, LayoutOutput};
 
 #[derive(Debug, Copy, Clone)]
 /// Content is flex and block containers.
@@ -22,7 +22,7 @@ pub(super)  struct LayoutNode {
     pub(super) kind: LayoutNodeKind,
     pub(super) style: Style,
     pub(super) style_context: StyleContext,
-    pub(super) children: Vec<usize>,
+    pub(super) children: Vec<NodeId>,
     pub(super) text: Option<String>,
     pub(super) inline_layout: Option<parley::Layout<[u8; 4]>>,
     pub(crate) cache: Cache,
@@ -31,7 +31,7 @@ pub(super)  struct LayoutNode {
 }
 
 impl LayoutNode {
-    pub (super) fn new_container(kind: LayoutNodeKind, style_context: StyleContext, children: Vec<usize>) -> Self {
+    pub (super) fn new_container(kind: LayoutNodeKind, style_context: StyleContext, children: Vec<NodeId>) -> Self {
         Self {
             kind,
             style: style_context_to_taffy(&style_context),
@@ -74,13 +74,9 @@ impl LayoutTree {
         }
     }
 
-    pub fn add_node(&mut self, node: LayoutNode) -> usize {
+    pub fn add_node(&mut self, node: LayoutNode) -> NodeId {
         self.nodes.push(node);
-        self.nodes.len() - 1
-    }
-
-    pub fn append_child(&mut self, parent: usize, child: usize) {
-        self.nodes[parent].children.push(child);
+        NodeId::from(self.nodes.len() - 1)
     }
 
     #[inline(always)]
@@ -93,24 +89,23 @@ impl LayoutTree {
         &mut self.nodes[usize::from(node_id)]
     }
 
-    pub fn compute_layout(&mut self, root: usize, available_space: Size<AvailableSpace>, use_rounding: bool) {
-        compute_root_layout(self, NodeId::from(root), available_space);
+    pub fn compute_layout(&mut self, root: NodeId, available_space: Size<AvailableSpace>, use_rounding: bool) {
+        compute_root_layout(self, root, available_space);
         if use_rounding {
-            round_layout(self, NodeId::from(root))
+            round_layout(self, root)
         }
     }
 
-    pub fn print_tree(&mut self, root: usize) {
-        print_tree(self, NodeId::from(root));
+    pub fn print_tree(&mut self, root: NodeId) {
+        print_tree(self, root);
     }
 }
 
-pub struct ChildIter<'a>(std::slice::Iter<'a, usize>);
+pub struct ChildIter<'a>(std::slice::Iter<'a, NodeId>);
 impl Iterator for ChildIter<'_> {
     type Item = NodeId;
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().copied().map(NodeId::from)
-    }
+        self.0.next().copied()}
 }
 
 impl TraversePartialTree for LayoutTree {
@@ -125,7 +120,7 @@ impl TraversePartialTree for LayoutTree {
     }
 
     fn get_child_id(&self, node_id: NodeId, index: usize) -> NodeId {
-        NodeId::from(self.node_from_id(node_id).children[index])
+        self.node_from_id(node_id).children[index]
     }
 }
 
@@ -256,7 +251,7 @@ impl PrintTree for LayoutTree {
     fn get_debug_label(&self, node_id: NodeId) -> &'static str {
         let node = self.node_from_id(node_id);
         match node.kind {
-            LayoutNodeKind::Container => match node.style_context.display {
+            LayoutNodeKind::Container => match node.style_context.display() {
                 context::Display::Block => "Block",
                 context::Display::Inline => "Inline",
                 context::Display::InlineBlock => "Inline Block",

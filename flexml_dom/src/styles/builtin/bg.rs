@@ -1,10 +1,12 @@
 use crate::styles::context::{BgPosition, BgRepeat, BgSize, Image, StyleContext};
-use crate::styles::builtin::{apply_color, apply_match_style, BuiltInStyle};
+use crate::styles::builtin::{style_context_color, style_context_match, BuiltInStyle};
 use crate::styles::style::{StyleValue, UrlType};
 use crate::styles::style::StyleValueParser::{Color, Match, Url};
 
 fn apply_bg_color(value: &StyleValue, context: &mut StyleContext) {
-    apply_color(value, &mut context.bg_color);
+    if let Some(color) = style_context_color(value) {
+        context.set_bg_color(color);
+    }
 }
 
 pub static BG_COLOR: BuiltInStyle = BuiltInStyle {
@@ -28,15 +30,18 @@ pub static BG_IMAGE: BuiltInStyle = BuiltInStyle {
     apply_style: apply_bg_image,
 };
 
+const  BG_POSITION_VARIANTS: &[BgPosition] = &[
+    BgPosition::Center,
+    BgPosition::Top,
+    BgPosition::Bottom,
+    BgPosition::Left,
+    BgPosition::Right,
+];
 
 fn apply_bg_position(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.bg_position, &[
-        BgPosition::Center,
-        BgPosition::Top,
-        BgPosition::Bottom,
-        BgPosition::Left,
-        BgPosition::Right,
-    ]);
+    if let Some(v) = style_context_match(value, BG_POSITION_VARIANTS){
+        context.set_bg_position(v);
+    }
 }
 
 pub static BG_POSITION: BuiltInStyle = BuiltInStyle {
@@ -49,13 +54,17 @@ pub static BG_POSITION: BuiltInStyle = BuiltInStyle {
 };
 
 
+const BG_REPEAT_VARIANTS: &[BgRepeat] = &[
+    BgRepeat::Repeat,
+    BgRepeat::RepeatX,
+    BgRepeat::RepeatY,
+    BgRepeat::NoRepeat,
+];
+
 fn apply_bg_repeat(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.bg_repeat, &[
-        BgRepeat::Repeat,
-        BgRepeat::RepeatX,
-        BgRepeat::RepeatY,
-        BgRepeat::NoRepeat
-    ]);
+    if let Some(v) = style_context_match(value, BG_REPEAT_VARIANTS) {
+        context.set_bg_repeat(v);
+    }
 }
 
 pub static BG_REPEAT: BuiltInStyle = BuiltInStyle {
@@ -71,12 +80,16 @@ pub static BG_REPEAT: BuiltInStyle = BuiltInStyle {
 };
 
 
+const BG_SIZE_VARIANTS: &[BgSize] = &[
+    BgSize::Auto,
+    BgSize::Cover,
+    BgSize::Contain,
+];
+
 fn apply_bg_size(value: &StyleValue, context: &mut StyleContext) {
-    apply_match_style(value, &mut context.bg_size, &[
-        BgSize::Auto,
-        BgSize::Cover,
-        BgSize::Contain
-    ]);
+    if let Some(v) = style_context_match(value, BG_SIZE_VARIANTS) {
+        context.set_bg_size(v);
+    }
 }
 
 pub static BG_SIZE: BuiltInStyle = BuiltInStyle {

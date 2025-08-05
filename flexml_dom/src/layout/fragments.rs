@@ -166,12 +166,12 @@ impl FragmentGroup {
 
 
 fn container_style_fragments(container: &LayoutNode, offset_x: f32, offset_y: f32) -> Option<Vec<Fragment>> {
-    let em = container.style_context.resolved_font_size;
-    let rem = container.style_context.resolved_root_font_size;
-    let dpi = container.style_context.dpi;
+    let em = container.style_context.resolved_font_size();
+    let rem = container.style_context.resolved_root_font_size();
+    let dpi = container.style_context.dpi();
 
-    let has_bg = container.style_context.bg_color.3 != 0;
-    let has_border = container.style_context.border_color.3 != 0;
+    let has_bg = container.style_context.bg_color().3 != 0;
+    let has_border = container.style_context.border_color().3 != 0;
 
     //No fragments to render
     if !has_bg && !has_border { return None }
@@ -189,19 +189,19 @@ fn container_style_fragments(container: &LayoutNode, offset_x: f32, offset_y: f3
     );
 
     let radius = Radius::new(
-        style.border_top_left_radius.to_pixels(layout.size.width, rem, em, dpi),
-        style.border_top_right_radius.to_pixels(layout.size.width, rem, em, dpi),
-        style.border_bottom_left_radius.to_pixels(layout.size.width, rem, em, dpi),
-        style.border_bottom_right_radius.to_pixels(layout.size.width, rem, em, dpi)
+        style.border_top_left_radius().to_pixels(layout.size.width, rem, em, dpi),
+        style.border_top_right_radius().to_pixels(layout.size.width, rem, em, dpi),
+        style.border_bottom_left_radius().to_pixels(layout.size.width, rem, em, dpi),
+        style.border_bottom_right_radius().to_pixels(layout.size.width, rem, em, dpi)
     );
 
     if has_bg {
-        fragments.push(Fragment::bg(bounds, radius, style.bg_color))
+        fragments.push(Fragment::bg(bounds, radius, style.bg_color()))
     }
 
     if has_border {
-        let border_weight = style.border_width.to_pixels(layout.size.width, rem, em, dpi);
-        fragments.push(Fragment::border(bounds, radius, style.border_color, border_weight))
+        let border_weight = style.border_width().to_pixels(layout.size.width, rem, em, dpi);
+        fragments.push(Fragment::border(bounds, radius, style.border_color(), border_weight))
     }
 
     Some(fragments)
@@ -210,12 +210,12 @@ fn container_style_fragments(container: &LayoutNode, offset_x: f32, offset_y: f3
 
 pub(super) fn collect_fragments(
     tree: &LayoutTree,
-    node_id: usize,
+    node_id: NodeId,
     offset_x: f32,
     offset_y: f32,
     out: &mut Vec<FragmentGroup>,
 ) {
-    let node = tree.node_from_id(NodeId::from(node_id));
+    let node = tree.node_from_id(node_id);
     let node_children = node.children.clone();
 
     if matches!(node.kind, LayoutNodeKind::InlineContent) {
@@ -257,7 +257,10 @@ pub(super) fn collect_fragments(
                         }
 
                         PositionedLayoutItem::InlineBox(inline_box) => {
-                            collect_fragments(tree, inline_box.id as usize, offset_x + inline_box.x, offset_y + inline_box.y, out);
+                            // Shift from top aligned to baseline aligned
+                            // needs testing and should use the vertical align style property maybe
+                            let baseline_y = inline_box.height - (line_metrics.max_coord + inline_box.y);
+                            collect_fragments(tree, NodeId::from(inline_box.id), offset_x + inline_box.x, offset_y + baseline_y, out);
                         }
                     }
                 }
@@ -274,10 +277,10 @@ pub(super) fn collect_fragments(
         node.final_layout.size.height,
     ));
 
-    if let LayoutNodeKind::Container = node.kind {
-        if let Some(style_fragments) = container_style_fragments(node, offset_x, offset_y) {
-            group.fragments.extend(style_fragments);
-        }
+    if  let LayoutNodeKind::Container = node.kind
+        && let Some(style_fragments) = container_style_fragments(node, offset_x, offset_y)
+    {
+        group.fragments.extend(style_fragments);
     }
 
     for child_id in node_children {
