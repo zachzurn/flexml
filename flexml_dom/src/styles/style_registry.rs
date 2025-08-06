@@ -1,14 +1,13 @@
-use std::collections::{HashMap, HashSet};
-use url::Url;
+use super::style::{AtomicStyle, FileId, FontId, ImageId, RawStyle, StyleId, StyleValue, StyleValueParser, UrlType};
 use crate::strings::{Chars, ValueErrors, ValueHelp};
 use crate::styles::builtin::{BuiltInStyle, DEFAULT_BUILTINS, ROOT_STYLE_NAME};
-use crate::styles::context::{Color, StyleContext};
-use crate::styles::context::Dimension::Resolved;
+use crate::styles::context::StyleContext;
 use crate::styles::style::StyleValue::{Font, Image};
-use super::style::{AtomicStyle, FileId, FontId, ImageId, RawStyle, StyleId, StyleValue, StyleValueParser, UrlType};
+use std::collections::{HashMap, HashSet};
+use url::Url;
 
 /// Style Registry is the central place
-/// to register atomic styles (Things like fontSize, fontWeight, etc)
+/// to register atomic styles (Things like fontSize, fontWeight, etc.)
 /// and to register built in styles (Things like bold, italic, flex)
 ///
 /// It also allows overwriting styles while protecting atomic styles
@@ -151,6 +150,7 @@ impl StyleRegistry {
         // will apply.
         root.set_as_root();
 
+        // ROOT_STYLE_NAME is "PAGE". Users can set page specific settings in a style definition
         if let Some(styles) = self.names_map.get(ROOT_STYLE_NAME)
             .and_then(|&id| self.definitions.get(&id)) {
             for atomic in styles {
@@ -158,31 +158,8 @@ impl StyleRegistry {
             }
         }
 
-        // We need to ensure the fundamental dimensions are sound
-
-        let default_font_size = StyleContext::default_font_size_pixels();
-        let min_font_size = StyleContext::min_font_size_pixels();
-
-        let default_width = StyleContext::default_page_width_resolved();
-        let min_width = StyleContext::min_page_width_resolved();
-
-        let default_height = StyleContext::default_page_height_resolved();
-        let min_height = StyleContext::min_page_height_resolved();
-
-        let min_dpi = StyleContext::min_dpi();
-
-        if !root.has_bg_color() {
-            root.set_bg_color(Color(255,255,255,255));
-        }
-
-        //Ensure sane values
-        root.set_dpi(min_dpi.max(root.dpi()).round());
-        root.set_width(Resolved(min_width.max(root.width().to_pixels(default_width, default_font_size,default_font_size,root.dpi())).round()));
-        root.set_height(Resolved(min_height.max(root.height().to_pixels(default_height, default_font_size,default_font_size,root.dpi())).round()));
-
-        // Set resolved font sizes. These are needed for dimension calculations involving rem or em
-        root.set_resolved_font_size(min_font_size.max(root.font_size().to_pixels(default_font_size, default_font_size, default_font_size, root.dpi())));
-        root.set_resolved_root_font_size(root.resolved_font_size());
+        // Prepares the root style for cascading
+        root.prepare_root();
     }
 
     /// Resolve local atomic styles and cascade

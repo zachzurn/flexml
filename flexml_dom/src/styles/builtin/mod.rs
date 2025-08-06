@@ -59,14 +59,11 @@ fn float_to_context(value: &StyleValue) -> Option<f32> {
 fn length_to_context(value: &StyleValue, variants: &[Dimension]) -> Option<Dimension> {
     match value {
         StyleValue::PositiveNumber(dimension) |
-        StyleValue::NegativeNumber(dimension)
-        => Some(*dimension),
+        StyleValue::NegativeNumber(dimension) => {
+            Some(*dimension)
+        },
         StyleValue::Match(i) => {
-            if let Some(val) = variants.get(*i as usize) {
-               Some(*val)
-            } else {
-                None
-            }
+            variants.get(*i as usize).copied()
         }
         _ => None
     }

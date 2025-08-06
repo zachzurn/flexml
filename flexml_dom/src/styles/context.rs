@@ -27,7 +27,7 @@ impl Dimension {
     /// Auto and content will always produce 0
     /// If you are checking for auto or content
     /// you should match against that first
-    pub fn to_pixels(&self, dim_px: f32, rem_px: f32, em_px: f32, dpi: f32) -> f32 {
+    pub fn as_pixels(&self, dim_px: f32, rem_px: f32, em_px: f32, dpi: f32) -> f32 {
         match self {
             Dimension::Percent(pct) => dim_px * pct,
             Dimension::Point(pt) => pt * (dpi * POINT_DPI),
@@ -242,6 +242,8 @@ bitflags! {
         const WHITE_SPACE          = 1 << 2;
         const OPACITY              = 1 << 3;
 
+        const DPI                  = 1 << 4;
+
         const MARGIN_TOP          = 1 << 5;
         const MARGIN_BOTTOM       = 1 << 6;
         const MARGIN_LEFT         = 1 << 7;
@@ -398,7 +400,6 @@ impl StyleContext {
         // on every style_context. Also we should maybe separate layout context
         // from text context
 
-
         // We check if the style was not explicitly set and then
         // set the style from the parent.
         for &bit in INHERITABLE_STYLES {
@@ -427,7 +428,7 @@ impl StyleContext {
         //Anything inside a block, inline or inline block
         //That didn't explicitly set a Display will be set to inline
         if !self.has_display() && !parent.is_root() {
-            match parent.display {
+            match parent.display() {
                 Display::Inline | Display::Block | Display::InlineBlock => {
                     self.set_display(Display::Inline);
                 }
@@ -435,19 +436,68 @@ impl StyleContext {
             }
         }
 
-
-
         // Calculate resolved font sizes
         // This makes cascaded em and rem dimensions possible
-        self.resolved_font_size = self.font_size.to_pixels(
+        self.resolved_font_size = self.font_size.as_pixels(
             parent.resolved_font_size,       // for Percent and Em
             parent.resolved_root_font_size,  // for Rem
             parent.resolved_font_size,       // for Em again
             parent.dpi,
         );
 
-        // Propagate root font size (unchanged from parent)
+        // Propagate root font size and dpi (unchanged from parent)
+        self.dpi = parent.dpi;
         self.resolved_root_font_size = parent.resolved_root_font_size;
+    }
+
+    pub fn prepare_root(&mut self) {
+        // We need to ensure the fundamental dimensions are sound
+        let default_dpi = 160.0;
+        let default_font_size_pixels = 16.0;
+        let default_page_width_inches = 8.5;
+        let default_page_height_inches = 11.0;
+        let default_page_margin_inches = 0.25;
+
+        // Minimums for no particular reason, but we don't want 0
+        let min_dpi: f32 = 100.0;
+        let min_page_dimension_resolved: f32 = 50.0;
+        let min_font_size_resolved: f32 = 6.0;
+
+        // Default page color
+        if !self.has_bg_color() {
+            self.set_bg_color(Color(255,255,255,255));
+        }
+
+        // Set default margins if not set by user
+        if !self.has_padding_top() { self.set_padding_top(Dimension::Inch(default_page_margin_inches)) }
+        if !self.has_padding_left() { self.set_padding_left(Dimension::Inch(default_page_margin_inches)) }
+        if !self.has_padding_bottom() { self.set_padding_bottom(Dimension::Inch(default_page_margin_inches)) }
+        if !self.has_padding_right() { self.set_padding_right(Dimension::Inch(default_page_margin_inches)) }
+
+        // Set default page dimensions if not set by user
+        if !self.has_width() { self.set_width(Dimension::Inch(default_page_width_inches)) }
+        if !self.has_height() { self.set_height(Dimension::Inch(default_page_height_inches)) }
+
+        // Default font size if not user set
+        if !self.has_font_size() { self.set_font_size(Dimension::Px(default_font_size_pixels)) }
+
+        // DPI must be set first
+        if !self.has_dpi() { self.set_dpi(default_dpi) }
+
+        // Ensure DPI is set to minimum
+        self.set_dpi(min_dpi.max(self.dpi()).round());
+
+        // Set resolved font sizes. For em and rem we use the default font size, so 1em or 1rem = default font size
+        let default_font_size_resolved = default_font_size_pixels * self.dpi();
+        self.set_resolved_font_size(min_font_size_resolved.max(self.font_size().as_pixels(default_font_size_resolved, default_font_size_resolved, default_font_size_resolved, self.dpi())));
+        self.set_resolved_root_font_size(self.resolved_font_size());
+
+        // Set resolved page dimensions
+        // 50% for example would resolve to 50% of the default page width
+        let default_page_width_resolved = default_page_width_inches * self.dpi();
+        let default_page_height_resolved = default_page_height_inches * self.dpi();
+        self.set_width(Dimension::Resolved(min_page_dimension_resolved.max(self.width().as_pixels(default_page_width_resolved, self.resolved_root_font_size(), self.resolved_font_size(), self.dpi())).round()));
+        self.set_height(Dimension::Resolved(min_page_dimension_resolved.max(self.height().as_pixels(default_page_height_resolved, self.resolved_root_font_size(), self.resolved_font_size(), self.dpi())).round()));
     }
 }
 
@@ -484,14 +534,6 @@ impl StyleContext {
         self.bits.contains(StyleBits::IS_ROOT)
     }
 
-    pub fn set_dpi(&mut self, dpi: f32) {
-        self.dpi = dpi
-    }
-
-    pub fn dpi(&self) -> f32 {
-        self.dpi
-    }
-
     pub fn resolved_font_size(&self) -> f32{
         self.resolved_font_size
     }
@@ -508,33 +550,7 @@ impl StyleContext {
         self.resolved_root_font_size = resolved_root_font_size
     }
 
-    pub fn default_font_size_pixels() -> f32 {
-        16.0f32
-    }
-
-    pub fn min_font_size_pixels() -> f32 {
-        1.0f32
-    }
-
-    pub fn default_page_width_resolved() -> f32 {
-        1920.0f32
-    }
-
-    pub fn min_page_width_resolved() -> f32 {
-        50.0f32
-    }
-
-    pub fn default_page_height_resolved() -> f32 {
-        1080.0f32
-    }
-
-    pub fn min_page_height_resolved() -> f32 {
-        50.0f32
-    }
-
-    pub fn min_dpi() -> f32 {
-        25.0f32
-    }
+    style_field!(dpi: f32, StyleBits::DPI);
 
     style_field!(display: Display, StyleBits::DISPLAY);
     style_field!(white_space: WhiteSpace, StyleBits::WHITE_SPACE);
@@ -603,11 +619,13 @@ impl StyleContext {
 impl Default for StyleContext {
     fn default() -> Self {
         Self {
-            dpi: 160.0f32,
+            dpi: 0.0, // cascaded from root
+            resolved_font_size: 0.0f32, // cascaded from parent
+            resolved_root_font_size: 0.0f32, // cascaded from root
 
             bits: Default::default(),
             display: Display::Block,
-            white_space: Default::default(),
+            white_space: WhiteSpace::Normal,
             opacity: 1.0,
             margin_top: Dimension::Zero,
             margin_bottom: Dimension::Zero,
@@ -630,19 +648,17 @@ impl Default for StyleContext {
             flex_shrink: 0.0,
             justify_content: Default::default(),
             flex_wrap: Default::default(),
-            width: Dimension::Inch(8.5),
-            max_width: Default::default(),
-            min_width: Default::default(),
-            height: Dimension::Inch(11.0),
-            max_height: Default::default(),
-            min_height: Default::default(),
+            width: Dimension::Auto,
+            max_width: Dimension::Auto,
+            min_width: Dimension::Auto,
+            height: Dimension::Auto,
+            max_height: Dimension::Auto,
+            min_height: Dimension::Auto,
             text_align: TextAlign::Left,
             color: Color(0,0,0,255),
             text_decoration: Default::default(),
             font_family: FontFamily::SansSerif,
-            font_size: Dimension::Px(StyleContext::default_font_size_pixels()),
-            resolved_font_size: 0.0f32,
-            resolved_root_font_size: 0.0f32,
+            font_size: Dimension::Zero, //This will cascade from root
             font_style: Default::default(),
             text_transform: Default::default(),
             letter_spacing: Default::default(),

@@ -47,8 +47,8 @@ impl FlexmlLayout {
     pub fn new(doc: &FlexmlDocument, layout_context: FlexmlLayoutContext) -> FlexmlLayout {
         let dpi = doc.root_style.dpi();
         let none = 0.0f32;
-        let page_width = doc.root_style.width().to_pixels(none, none, none, dpi);
-        let page_height = doc.root_style.height().to_pixels(none, none, none, dpi);
+        let page_width = doc.root_style.width().as_pixels(none, none, none, dpi);
+        let page_height = doc.root_style.height().as_pixels(none, none, none, dpi);
 
         let mut pages = vec!(FlexmlPage{
             fragments: vec![],
@@ -70,11 +70,15 @@ impl FlexmlLayout {
 
 
         // TODO, available space should include padding calculations
-        let mut page_y = 0.0;
-        let page_x = 0.0;
-        let _page_max_y = 0.0;
-        let page_space: Size<AvailableSpace> = Size{width: AvailableSpace::from(page_width), height: AvailableSpace::MaxContent};
+        let em = doc.root_style.resolved_font_size();
+        let rem = doc.root_style.resolved_root_font_size();
+        let dpi = doc.root_style.dpi();
 
+        let page_top = doc.root_style.padding_top().as_pixels(page_width, rem, em, dpi);
+        let page_left = doc.root_style.padding_left().as_pixels(page_width, rem, em, dpi);
+        let page_bottom = doc.root_style.padding_bottom().as_pixels(page_width, rem, em, dpi);
+        let page_right = doc.root_style.padding_right().as_pixels(page_width, rem, em, dpi);
+        let page_space: Size<AvailableSpace> = Size{width: AvailableSpace::from(page_width - (page_left + page_right)), height: AvailableSpace::MaxContent};
 
         //We treat the top level as a box container with its children
         //being root nodes. Each root node is laid out and fragmented/paginated
@@ -83,16 +87,19 @@ impl FlexmlLayout {
         let root_layout = layout_tree.node_from_id(root_layout_id);
         let root_node_ids = root_layout.children.clone();
 
+        let _current_page_max_y = page_height - page_bottom;
+        let mut current_page_y = page_top;
+        let current_page_x = page_left;
 
         // loop through root_layout_nodes and generate fragments + paginate
         for root_layout_node in root_node_ids {
             layout_tree.compute_layout(root_layout_node, page_space,true);
 
             layout_tree.print_tree(root_layout_node);
-            collect_fragments(&layout_tree, root_layout_node, page_x, page_y, &mut current_page.fragments);
+            collect_fragments(&layout_tree, root_layout_node, current_page_x, current_page_y, &mut current_page.fragments);
 
             let root_node = layout_tree.node_from_id(root_layout_node);
-            page_y += root_node.final_layout.size.height;
+            current_page_y += root_node.final_layout.size.height;
         }
 
         FlexmlLayout{ page_width, page_height, dpi,
@@ -102,7 +109,6 @@ impl FlexmlLayout {
     }
 }
 
-
 /// Core cascade recurse
 ///
 /// Cascades styles and collects LayoutNodes
@@ -110,6 +116,8 @@ impl FlexmlLayout {
 ///
 /// Container:
 /// Raw Containers are Block, Flex containers
+/// Flex containers ignore direct descendent whitespace and will wrap text
+/// into blocks with InlineContent
 ///
 /// InlineContent:
 /// InlineContent holds Text and InlineBlock Containers only
@@ -139,21 +147,26 @@ fn cascade_container(
             Node::BoxContainer { styles, children } => {
                 let child_style = style_registry.resolve_style(&layout_style, styles);
 
-                let child_node = cascade_container(
-                    tree, false, style_registry, &child_style, children, styles,
-                );
-
                 match child_style.display() {
+                    // Inline nodes are flattened into the inline buffer
                     Display::Inline => {
-                        let child_node_data = tree.node_from_id(child_node);
-
-                        if matches!(child_node_data.kind, LayoutNodeKind::InlineContent) {
-                            inline_buffer.extend(child_node_data.children.iter().copied());
-                        } else {
-                            inline_buffer.push(child_node);
-                        }
+                        // Cascade inline. All text is flattened into the inline buffer
+                        flush_inline_to_buffer(tree, style_registry, &child_style, children, &mut inline_buffer);
                     }
+                    // Inline Blocks are cascaded and live alongside inline content
+                    Display::InlineBlock => {
+                        let child_node = cascade_container(
+                            tree, false, style_registry, &child_style, children, styles,
+                        );
+
+                        inline_buffer.push(child_node);
+                    }
+                    // Every other BoxContainer type is cascaded
                     _ => {
+                        let child_node = cascade_container(
+                            tree, false, style_registry, &child_style, children, styles,
+                        );
+
                         // flush entire inline buffer before adding block child
                         flush_inline_buffer(tree, &layout_style, &mut inline_buffer, &mut layout_children);
                         layout_children.push(child_node);
@@ -181,7 +194,9 @@ fn cascade_container(
     ))
 }
 
-
+/// If a buffer has nodes, wraps them in an InlineContent LayoutNode
+/// This is used to clean out a buffer and push the generated LayoutNode
+/// into the completed output vec
 fn flush_inline_buffer(
     tree: &mut LayoutTree,
     style: &StyleContext,
@@ -198,53 +213,30 @@ fn flush_inline_buffer(
     }
 }
 
-/// Inline containers can only contain InlineBlock or Text containers
-/// Thus we convert any Flex or Block containers into InlineBlock
-fn flatten_for_inline_context(
+/// Take a node's children and flush
+/// all text to the output vec.
+///
+/// Styles are still cascaded, but container
+/// boxes are dropped since we don't need them.
+///
+/// This is used to flatten inline containers
+fn flush_inline_to_buffer(
     tree: &mut LayoutTree,
     style_registry: &StyleRegistry,
     inherited_style: &StyleContext,
-    node: &Node,
+    children: &Vec<Node>,
     output: &mut Vec<NodeId>,
 ) {
-    match node {
-        Node::BoxContainer { styles, children } => {
-            let resolved_style = style_registry.resolve_style(inherited_style, styles);
-
-            match resolved_style.display() {
-                Display::Inline => {
-                    // Recursively flatten children
-                    for child in children {
-                        flatten_for_inline_context(tree, style_registry, &resolved_style, child, output);
-                    }
-                }
-                _ => {
-                    // Convert to inline-block and include whole subtree
-                    // TODO we should possibly just wrap these and retain the inner block style
-                    // instead of just changing them to InlineBlock
-                    let mut style = resolved_style;
-                    style.set_display(Display::InlineBlock);
-
-                    let child_node = cascade_container(
-                        tree,
-                        false,
-                        style_registry,
-                        &style,
-                        children,
-                        styles,
-                    );
-                    output.push(child_node);
-                }
+    for node in children {
+        match node {
+            Node::Text(text) | Node::Whitespace(text) => {
+                output.push(tree.add_node(LayoutNode::new_text(*inherited_style, text.to_string())));
             }
-        }
-
-        Node::Text(text) | Node::Whitespace(text) => {
-            let text_node = tree.add_node(LayoutNode::new_text(*inherited_style, text.to_string()));
-            output.push(text_node);
-        }
-
-        _ => {
-            // Skip unknown nodes
+            Node::BoxContainer { styles, children } => {
+                let container_style = style_registry.resolve_style(inherited_style, styles);
+                flush_inline_to_buffer(tree, style_registry, &container_style, children, output );
+            }
+            _ => {}
         }
     }
 }

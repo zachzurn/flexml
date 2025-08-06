@@ -1,6 +1,7 @@
 use crate::styles::context::{BgPosition, BgRepeat, BgSize, Image, StyleContext};
 use crate::styles::builtin::{style_context_color, style_context_match, BuiltInStyle};
 use crate::styles::style::{StyleValue, UrlType};
+use crate::styles::style::StyleValue::Forward;
 use crate::styles::style::StyleValueParser::{Color, Match, Url};
 
 fn apply_bg_color(value: &StyleValue, context: &mut StyleContext) {
@@ -12,7 +13,7 @@ fn apply_bg_color(value: &StyleValue, context: &mut StyleContext) {
 pub static BG_COLOR: BuiltInStyle = BuiltInStyle {
     name: "bgColor",
     parser: Color,
-    styles: &[],
+    styles: &[("bg", Forward)],
     apply_style: apply_bg_color,
 };
 

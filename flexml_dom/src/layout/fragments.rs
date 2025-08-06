@@ -189,10 +189,10 @@ fn container_style_fragments(container: &LayoutNode, offset_x: f32, offset_y: f3
     );
 
     let radius = Radius::new(
-        style.border_top_left_radius().to_pixels(layout.size.width, rem, em, dpi),
-        style.border_top_right_radius().to_pixels(layout.size.width, rem, em, dpi),
-        style.border_bottom_left_radius().to_pixels(layout.size.width, rem, em, dpi),
-        style.border_bottom_right_radius().to_pixels(layout.size.width, rem, em, dpi)
+        style.border_top_left_radius().as_pixels(layout.size.width, rem, em, dpi),
+        style.border_top_right_radius().as_pixels(layout.size.width, rem, em, dpi),
+        style.border_bottom_left_radius().as_pixels(layout.size.width, rem, em, dpi),
+        style.border_bottom_right_radius().as_pixels(layout.size.width, rem, em, dpi)
     );
 
     if has_bg {
@@ -200,7 +200,7 @@ fn container_style_fragments(container: &LayoutNode, offset_x: f32, offset_y: f3
     }
 
     if has_border {
-        let border_weight = style.border_width().to_pixels(layout.size.width, rem, em, dpi);
+        let border_weight = style.border_width().as_pixels(layout.size.width, rem, em, dpi);
         fragments.push(Fragment::border(bounds, radius, style.border_color(), border_weight))
     }
 
@@ -259,7 +259,9 @@ pub(super) fn collect_fragments(
                         PositionedLayoutItem::InlineBox(inline_box) => {
                             // Shift from top aligned to baseline aligned
                             // needs testing and should use the vertical align style property maybe
-                            let baseline_y = inline_box.height - (line_metrics.max_coord + inline_box.y);
+                            println!("inline box: {:?} {:?}", inline_box, line_metrics);
+                            println!("inline box: {:?}", inline_box.height - (line_metrics.max_coord + inline_box.y));
+                            let baseline_y = 33.0;
                             collect_fragments(tree, NodeId::from(inline_box.id), offset_x + inline_box.x, offset_y + baseline_y, out);
                         }
                     }

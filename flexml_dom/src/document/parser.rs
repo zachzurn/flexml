@@ -4,7 +4,6 @@ use super::tokens::Token::*;
 pub(crate) use crate::document::warnings::ParserWarning;
 use crate::document::warnings::ParserWarningKind::*;
 use logos::{Lexer, Logos, Span};
-use crate::document::nodes::Node::BoxContainer;
 use crate::styles::context::StyleContext;
 use crate::styles::style::{AtomicStyle, RawStyle, StyleId};
 use crate::styles::style_registry::StyleRegistry;
@@ -101,9 +100,9 @@ impl<'a> FlexmlDocument<'a> {
                 },
                 Node::BoxContainer {..} => {
                     if !text_group.is_empty() {
-                        self.nodes.push(BoxContainer {
+                        self.nodes.push(Node::BoxContainer {
                             styles: vec![],
-                            children: text_group.drain(..).collect(),
+                            children: std::mem::take(&mut text_group),
                         })
                     }
                     self.nodes.push(node)
@@ -121,9 +120,9 @@ impl<'a> FlexmlDocument<'a> {
         }
 
         if !text_group.is_empty() {
-            self.nodes.push(BoxContainer {
+            self.nodes.push(Node::BoxContainer {
                 styles: vec![],
-                children: text_group.drain(..).collect(),
+                children: std::mem::take(&mut text_group),
             })
         }
 
@@ -249,10 +248,9 @@ impl<'a> FlexmlDocument<'a> {
                     return if !self.spend_node_depth() {
                         // Exceeded node depth, skip box
                         self.skip_box_container();
-                        if let Some(warning) = self.warnings.last_mut() {
-                            if matches!(warning.kind, ExceededNodeDepth) {
+                        if let Some(warning) = self.warnings.last_mut()
+                        && matches!(warning.kind, ExceededNodeDepth) {
                                 warning.span.end = self.lexer.span().end;
-                            }
                         }
                         continue;
                     } else {
@@ -582,8 +580,9 @@ impl<'a> FlexmlDocument<'a> {
     /// unless the guard is reset
     fn spend_node_depth(&mut self) -> bool {
         if self.depth_guard.tick() {
+
             // Fire off a single warning
-            if self.depth_guard.exceeded == false {
+            if !self.depth_guard.exceeded {
                 self.depth_guard.exceeded = true;
                 self.warn(self.lexer.span(), ExceededNodeDepth);
             }

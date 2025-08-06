@@ -252,13 +252,13 @@ impl PrintTree for LayoutTree {
         let node = self.node_from_id(node_id);
         match node.kind {
             LayoutNodeKind::Container => match node.style_context.display() {
-                context::Display::Block => "Block",
-                context::Display::Inline => "Inline",
-                context::Display::InlineBlock => "Inline Block",
-                context::Display::Flex => "Flex",
-                context::Display::Table => "Table",
+                context::Display::Block => "Box(Block)",
+                context::Display::Inline => "Box(Inline)",
+                context::Display::InlineBlock => "Box(Inline Block)",
+                context::Display::Flex => "Box (Flex)",
+                context::Display::Table => "Box (Table)",
             },
-            LayoutNodeKind::InlineContent => "Inline Content",
+            LayoutNodeKind::InlineContent => "Content",
             LayoutNodeKind::Text => "Text",
         }
     }

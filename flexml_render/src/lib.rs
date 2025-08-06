@@ -261,9 +261,17 @@ mod tests {
     fn test_render_box_scene() -> Result<()> {
         //let input = "[width: 5in + height: 2in + bgColor: #ff0000AA this is some text \r\n and some more on a new line] [box + bgColor: #00FF00AA + height: 1in]";
 
-        let input = "[paddingLeft: 20px + width: 250px + bgColor: #0000FF0A + color: #ff0000 We have 😄 some [bold + color: #FF00FF Purple ] text that should wrap onto a new line [display: inline-block this is inline block] with some inline content here [italic which is italic ] ]";
+        let sample_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("resources")
+            .join("test")
+            .join("in")
+            .join(format!("{}.{}", "rendertest", "flexml"));
 
-        let document = FlexmlDocument::new(input)
+        let input = std::fs::read_to_string(sample_file.to_str().unwrap()).unwrap();
+
+
+        let document = FlexmlDocument::new(&input)
             .parse();
 
 

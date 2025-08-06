@@ -6,7 +6,7 @@ fn to_taffy_dimension(rem_px: f32, em_px: f32, dpi: f32, dim: Dimension) -> taff
 
     match dim {
         Dimension::Percent(pct) => taffy::style::Dimension::percent(pct),
-        _ => taffy::style::Dimension::length(dim.to_pixels(0.0f32, rem_px, em_px, dpi))
+        _ => taffy::style::Dimension::length(dim.as_pixels(0.0f32, rem_px, em_px, dpi))
     }
 }
 
@@ -15,7 +15,7 @@ fn to_taffy_lpa(rem_px: f32, em_px: f32, dpi: f32, dim: Dimension) -> taffy::sty
 
     match dim {
         Dimension::Percent(pct) => taffy::style::LengthPercentageAuto::percent(pct),
-        _ => taffy::style::LengthPercentageAuto::length(dim.to_pixels(0.0f32, rem_px, em_px, dpi))
+        _ => taffy::style::LengthPercentageAuto::length(dim.as_pixels(0.0f32, rem_px, em_px, dpi))
     }
 }
 
@@ -25,11 +25,20 @@ fn to_taffy_lp(rem_px: f32, em_px: f32, dpi: f32, dim: Dimension) -> taffy::styl
 
     match dim {
         Dimension::Percent(pct) => taffy::style::LengthPercentage::percent(pct),
-        _ => taffy::style::LengthPercentage::length(dim.to_pixels(0.0f32, rem_px, em_px, dpi))
+        _ => taffy::style::LengthPercentage::length(dim.as_pixels(0.0f32, rem_px, em_px, dpi))
     }
 }
 
-fn to_taffy_size(rem_px: f32, em_px: f32, dpi: f32, w: Dimension, h: Dimension) -> taffy::Size<taffy::style::Dimension> {
+/// Returns a size
+/// for inline elements we ignore any set size
+fn to_taffy_size(rem_px: f32, em_px: f32, dpi: f32, w: Dimension, h: Dimension, inline: bool) -> taffy::Size<taffy::style::Dimension> {
+    if inline {
+        return taffy::Size{
+            width: taffy::style::Dimension::auto(),
+            height: taffy::style::Dimension::auto(),
+        }
+    }
+
     taffy::Size{
         width: to_taffy_dimension(rem_px, em_px, dpi, w),
         height: to_taffy_dimension(rem_px, em_px, dpi, h),
@@ -101,6 +110,8 @@ pub (super) fn style_context_to_taffy(style_context: &StyleContext) -> taffy::st
     let rem = style_context.resolved_root_font_size();
     let em = style_context.resolved_font_size();
 
+    let inline = matches!(style_context.display(), Display::Inline);
+
     taffy::style::Style {
         display: to_taffy_display(style_context.display()),
 
@@ -138,9 +149,9 @@ pub (super) fn style_context_to_taffy(style_context: &StyleContext) -> taffy::st
         flex_shrink: style_context.flex_shrink(),
         flex_basis: to_taffy_dimension(rem, em, dpi, style_context.flex_basis()),
 
-        size: to_taffy_size(rem, em, dpi, style_context.width(), style_context.height()),
-        min_size: to_taffy_size(rem, em, dpi, style_context.min_width(), style_context.min_height()),
-        max_size: to_taffy_size(rem, em, dpi, style_context.max_width(), style_context.max_height()),
+        size: to_taffy_size(rem, em, dpi, style_context.width(), style_context.height(), inline),
+        min_size: to_taffy_size(rem, em, dpi, style_context.min_width(), style_context.min_height(), inline),
+        max_size: to_taffy_size(rem, em, dpi, style_context.max_width(), style_context.max_height(), inline),
 
         item_is_table: false,
         item_is_replaced: false,

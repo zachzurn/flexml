@@ -1,5 +1,5 @@
 use crate::layout::tree::{LayoutNodeKind, LayoutTree};
-use crate::styles::context::{FontStyle, StyleContext};
+use crate::styles::context::{FontStyle, StyleContext, TextDecoration};
 use parley::{Alignment, AlignmentOptions, FontWeight, InlineBox, LineHeight, StyleProperty};
 use std::ops::Range;
 use taffy::{LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Point, Size};
@@ -19,12 +19,14 @@ fn parley_style<'a>(style: &StyleContext) -> Vec<StyleProperty<'a, [u8; 4]>> {
 
     vec![
         StyleProperty::FontSize(style.resolved_font_size()),
-        StyleProperty::LineHeight(LineHeight::Absolute(style.line_height().to_pixels(em, rem, em, dpi))),
-        StyleProperty::LetterSpacing(style.letter_spacing().to_pixels(em, rem, em, dpi)),
+        StyleProperty::LineHeight(LineHeight::Absolute(style.line_height().as_pixels(em, rem, em, dpi))),
+        StyleProperty::LetterSpacing(style.letter_spacing().as_pixels(em, rem, em, dpi)),
         StyleProperty::FontWeight(FontWeight::new(style.font_weight() as f32)),
         StyleProperty::FontStyle(font_style),
         StyleProperty::Brush([color.0, color.1, color.2, color.3]),
-        // TODO add other styles
+        StyleProperty::WordSpacing(style.word_spacing().as_pixels(em, rem, em, dpi)),
+        StyleProperty::Underline(matches!(style.text_decoration(), TextDecoration::Underline)),
+        StyleProperty::Strikethrough(matches!(style.text_decoration(), TextDecoration::LineThrough)),
     ]
 }
 
@@ -43,6 +45,7 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
         let child_node = tree.node_from_id(child_id);
         match child_node.kind {
             LayoutNodeKind::Text => {
+                // TODO implement text transform and whitespace handling
                 if let Some(text) = &child_node.text {
                     let start = i_text.len();
                     i_text.push_str(text);
@@ -50,7 +53,7 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
                     i_items.push(InlineItemBuilder::Text { range: start..end, styles: parley_style(&child_node.style_context) })
                 }
             }
-            // Containers directly in an inline layout are considered inline block
+            // Containers directly in an inline layout are always treated as inline block
             LayoutNodeKind::Container => {
                 let inline_index = i_text.len();
 
@@ -62,7 +65,7 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
             }
 
             // Inline content should only contain Containers and Text
-            // Other InlineContent is ignored as is considered an error
+            // Any other layout nodes are dropped
             _ => {  }
         }
     }
