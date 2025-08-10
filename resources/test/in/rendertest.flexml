@@ -1,6 +1,31 @@
-[paddingLeft: 20px + width: 250px + bgColor: #0000FF0A + color: #ff0000
-    We have 😄 some [bold + color: #FF00FF Bold Purple ] text that should wrap onto a new line
-    [display: inline-block this is inline block] with some inline content here
-    [italic + color: #00FF00 which is italic and green ] with some more text followed by a
-    [box + bg: #ffff00A0 breaking block element]
+{PAGE =
+    width: 5in +
+    height: 5in
+}
+
+{lightBlueBox =
+    bgColor: #0000FF0A +
+    padding: 20px +
+    width: 250px +
+    borderRadius: 10px
+}
+
+{bold = italic + color: #9a50ba}
+
+{italic = italic + color: #2fcc4e}
+
+{inline = display: inline-block + fontSize: 1.1em + color: #68c2e3 + bg: #fce99a}
+
+{box = box + bg: #fce99a + color: #000000 + padding: 5px + borderRadius: 5px + marginTop: 15px }
+
+[lightBlueBox
+    We have 😄 some [bold Bold Purple ] text that should wrap onto a new line
+    [inline this is inline block]
+    with some inline content here [italic which is italic and green ]
+    with some more text followed by a
+    [box breaking block element]
+]
+
+[lightBlueBox + bgColor: #abedd7
+    A variant of the light blue box
 ]

@@ -182,10 +182,10 @@ fn container_style_fragments(container: &LayoutNode, offset_x: f32, offset_y: f3
 
 
     let bounds = Rect::new(
-        offset_x + layout.location.x,
-        offset_y + layout.location.y,
-        layout.size.width,
-        layout.size.height,
+        offset_x + layout.location.x + layout.margin.left,
+        offset_y + layout.location.y + layout.margin.top,
+        layout.size.width - (layout.margin.left + layout.margin.right),
+        layout.size.height - (layout.margin.top + layout.margin.bottom),
     );
 
     let radius = Radius::new(
@@ -225,8 +225,8 @@ pub(super) fn collect_fragments(
                 for item in line.items() {
                     match item {
                         PositionedLayoutItem::GlyphRun(glyph_run) => {
-                            let x = glyph_run.offset();
-                            let y = line_metrics.offset + line_metrics.baseline - glyph_run.baseline();
+                            let x = node.final_layout.location.x + glyph_run.offset();
+                            let y = node.final_layout.location.y + line_metrics.offset + line_metrics.baseline - glyph_run.baseline();
 
                             let fragment = Fragment {
                                 bounds: Rect {
@@ -257,12 +257,12 @@ pub(super) fn collect_fragments(
                         }
 
                         PositionedLayoutItem::InlineBox(inline_box) => {
-                            // Shift from top aligned to baseline aligned
-                            // needs testing and should use the vertical align style property maybe
-                            println!("inline box: {:?} {:?}", inline_box, line_metrics);
-                            println!("inline box: {:?}", inline_box.height - (line_metrics.max_coord + inline_box.y));
-                            let baseline_y = 33.0;
-                            collect_fragments(tree, NodeId::from(inline_box.id), offset_x + inline_box.x, offset_y + baseline_y, out);
+                            // We need to move the inline box from top aligned to baseline aligned
+                            let effective_height = line_metrics.max_coord - line_metrics.min_coord;
+                            let baseline_offset = (line_metrics.baseline - effective_height) / 2.0;
+                            let baseline_y =  inline_box.y;
+
+                            collect_fragments(tree, NodeId::from(inline_box.id), offset_x + node.final_layout.location.x + inline_box.x, offset_y + node.final_layout.location.y + baseline_y, out);
                         }
                     }
                 }
@@ -286,7 +286,7 @@ pub(super) fn collect_fragments(
     }
 
     for child_id in node_children {
-        collect_fragments(tree, child_id, offset_x, offset_y, &mut group.subgroups);
+        collect_fragments(tree, child_id, offset_x + node.final_layout.location.x, offset_y + node.final_layout.location.y, &mut group.subgroups);
     }
 
     if !group.fragments.is_empty() || !group.subgroups.is_empty() {

@@ -19,10 +19,57 @@ Goals:
 * Zero interactivity (With the exception of maybe links for certain formats)
 * Image and Html rendering initially (Html rendering for easier early renders)
 * Possibly add barcode and qr rendering in the future
-  
+
+
 # Warning
 
 Project is in EXTREMELY early state, but code and RFC docs will be pushed to the main branch regularly.
+
+# Early Progress
+
+This flexml example renders the image below the code. This is a very early rendering and is lacking quite a bit.
+
+- PAGE style sets up the page width and height.
+- Styles define the look and use the Cascading additive style sheets.
+- Style forwarding is not implemented yet
+- We are using Parley for text layout, and are awaiting vertical alignment features
+- Whitespace handling is still incomplete
+
+```
+{PAGE =
+    width: 5in +
+    height: 5in
+}
+
+{lightBlueBox =
+    bgColor: #0000FF0A +
+    padding: 20px +
+    width: 250px +
+    borderRadius: 10px
+}
+
+{bold = italic + color: #9a50ba}
+
+{italic = italic + color: #2fcc4e}
+
+{inline = display: inline-block + fontSize: 1.1em + color: #68c2e3 + bg: #fce99a}
+
+{box = box + bg: #fce99a + color: #000000 + padding: 5px + borderRadius: 5px + marginTop: 15px }
+
+[lightBlueBox
+    We have 😄 some [bold Bold Purple ] text that should wrap onto a new line
+    [inline this is inline block]
+    with some inline content here [italic which is italic and green ]
+    with some more text followed by a
+    [box breaking block element]
+]
+
+[lightBlueBox + bgColor: #abedd7
+    A variant of the light blue box
+]
+```
+
+![rendertest.png](resources/test/out/rendertest.png)
 
 # Flexml Spec
 

@@ -138,7 +138,7 @@ impl StyleValueParser {
 
     }
 
-    // Parses a whole number
+    // Parses a number, can be positive or negative
     fn parse_number(s: &str) -> StyleValue {
         // precheck empty so we know empty value later on is invalid input
         if s.is_empty() { return StyleValue::Empty }
@@ -180,6 +180,7 @@ impl StyleValueParser {
 
         for (i, unit) in DIMENSION_STR.iter().enumerate() {
             if input.ends_with(unit) {
+                println!("unit match {}",unit);
                 let number_part = &input[..input.len() - unit.len()];
 
                 return if let Ok(value) = number_part.parse::<f32>() {

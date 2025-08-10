@@ -1,8 +1,9 @@
 use crate::layout::tree::{LayoutNodeKind, LayoutTree};
-use crate::styles::context::{FontStyle, StyleContext, TextDecoration};
+use crate::styles::context::{FontStyle, StyleContext, TextDecoration, TextTransform, WhiteSpace};
 use parley::{Alignment, AlignmentOptions, FontWeight, InlineBox, LineHeight, StyleProperty};
 use std::ops::Range;
 use taffy::{LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, Point, Size};
+use unicode_segmentation::UnicodeSegmentation;
 
 fn parley_style<'a>(style: &StyleContext) -> Vec<StyleProperty<'a, [u8; 4]>> {
     let em = style.resolved_font_size();
@@ -35,20 +36,87 @@ enum InlineItemBuilder<'a> {
     Inline{id: NodeId, index: usize, width: f32, height: f32},
 }
 
+fn transform_with_ws(
+    text: &str,
+    preserve_whitespace: WhiteSpace,
+    text_transform: TextTransform,
+    allow_pre_ws: bool,
+) -> (String, bool) {
+    let transformed = match text_transform {
+        TextTransform::None => text.to_string(),
+        TextTransform::Uppercase => text.to_uppercase(),
+        TextTransform::Lowercase => text.to_lowercase(),
+        TextTransform::Capitalize => {
+            text.split_word_bounds()
+                .map(|word| {
+                    let mut c = word.chars();
+                    match c.next() {
+                        None => "".to_string(),
+                        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                    }
+                })
+                .collect::<String>()
+        }
+    };
+
+    let mut result = String::new();
+    let mut trailing_ws = false;
+
+    match preserve_whitespace {
+        WhiteSpace::Normal | WhiteSpace::NoWrap => {
+            let words: Vec<&str> = transformed
+                .split_whitespace()
+                .collect();
+
+            if words.is_empty() {
+                return (String::new(), false);
+            }
+
+            result = words.join(" ");
+
+            trailing_ws = {
+                let trimmed_len = text.trim_end().len();
+                trimmed_len < text.len()
+            };
+        }
+        WhiteSpace::Pre | WhiteSpace::PreWrap | WhiteSpace::PreLine => {
+            if !allow_pre_ws {
+                result = transformed.trim_start().to_string();
+            } else {
+                result = transformed;
+            }
+
+            trailing_ws = {
+                let trimmed_len = result.trim_end_matches(|c: char| c.is_whitespace()).len();
+                trimmed_len < result.len()
+            };
+        }
+    }
+
+    (result, trailing_ws)
+}
+
 /// Layout an inline container.
 /// We use the tree to compute inline blocks
 pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inputs: LayoutInput) -> LayoutOutput {
     let mut i_text = String::new();
     let mut i_items: Vec<InlineItemBuilder> = Vec::new();
 
+    let node = tree.node_from_id(node_id);
+    let ws = node.style_context.white_space();
+    let transform = node.style_context.text_transform();
+    let mut trailing_ws = false;
+
     for child_id in tree.node_from_id(node_id).children.clone() {
         let child_node = tree.node_from_id(child_id);
         match child_node.kind {
             LayoutNodeKind::Text => {
-                // TODO implement text transform and whitespace handling
                 if let Some(text) = &child_node.text {
+                    let (transformed, has_trailing_ws) = transform_with_ws(text, ws, transform, !trailing_ws);
+                    trailing_ws = has_trailing_ws;
+
                     let start = i_text.len();
-                    i_text.push_str(text);
+                    i_text.push_str(&transformed);
                     let end = i_text.len();
                     i_items.push(InlineItemBuilder::Text { range: start..end, styles: parley_style(&child_node.style_context) })
                 }
@@ -70,7 +138,8 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
         }
     }
 
-    let mut builder = tree.context.parley_layout_context.ranged_builder(&mut tree.context.parley_font_context, &i_text, tree.context.parley_display_scale, true);
+    let mut builder = tree.context.parley_layout_context
+        .ranged_builder(&mut tree.context.parley_font_context, &i_text, tree.context.parley_display_scale, true);
 
     for i_item in i_items {
         match i_item {

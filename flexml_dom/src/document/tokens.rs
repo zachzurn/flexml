@@ -6,7 +6,7 @@ pub enum Token {
     #[regex(r"[ \t\r\n\f]+", priority = 5)]
     Whitespace,
 
-    #[regex(r"[A-Za-z0-9>#-]+", priority = 5)]
+    #[regex(r"[A-Za-z0-9>#\-\.]+", priority = 5)]
     Named,
 
     #[token("=", priority = 5)]

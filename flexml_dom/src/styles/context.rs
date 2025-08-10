@@ -34,8 +34,8 @@ impl Dimension {
             Dimension::Inch(inch) => inch * dpi,
             Dimension::Mm(mm) => mm * (dpi * INCHES_PER_MM),
             Dimension::Px(px) => px * (dpi * STANDARD_DPI),
-            Dimension::Em(em) => em * em_px,
-            Dimension::Rem(rem) => rem * rem_px,
+            Dimension::Em(em) => em_px * em,
+            Dimension::Rem(rem) => rem_px * rem,
             Dimension::Auto | Dimension::Content | Dimension::Zero => 0.0,
             Dimension::Resolved(resolved_value) => *resolved_value,
         }
@@ -405,18 +405,18 @@ impl StyleContext {
         for &bit in INHERITABLE_STYLES {
             if !self.bits.contains(bit) && parent.bits.contains(bit) {
                 match bit {
-                    StyleBits::COLOR => self.color = parent.color,
-                    StyleBits::FONT_FAMILY => self.font_family = parent.font_family,
-                    StyleBits::FONT_SIZE => self.font_size = parent.font_size,
-                    StyleBits::FONT_STYLE => self.font_style = parent.font_style,
-                    StyleBits::FONT_WEIGHT => self.font_weight = parent.font_weight,
-                    StyleBits::LETTER_SPACING => self.letter_spacing = parent.letter_spacing,
-                    StyleBits::LINE_HEIGHT => self.line_height = parent.line_height,
-                    StyleBits::TEXT_ALIGN => self.text_align = parent.text_align,
-                    StyleBits::TEXT_DECORATION => self.text_decoration = parent.text_decoration,
-                    StyleBits::TEXT_TRANSFORM => self.text_transform = parent.text_transform,
-                    StyleBits::WHITE_SPACE => self.white_space = parent.white_space,
-                    StyleBits::WORD_SPACING => self.word_spacing = parent.word_spacing,
+                    StyleBits::COLOR => self.set_color(parent.color),
+                    StyleBits::FONT_FAMILY => self.set_font_family(parent.font_family),
+                    StyleBits::FONT_SIZE => self.set_font_size(parent.font_size),
+                    StyleBits::FONT_STYLE => self.set_font_style(parent.font_style),
+                    StyleBits::FONT_WEIGHT => self.set_font_weight(parent.font_weight),
+                    StyleBits::LETTER_SPACING => self.set_letter_spacing(parent.letter_spacing),
+                    StyleBits::LINE_HEIGHT => self.set_line_height(parent.line_height),
+                    StyleBits::TEXT_ALIGN => self.set_text_align(parent.text_align),
+                    StyleBits::TEXT_DECORATION => self.set_text_decoration(parent.text_decoration),
+                    StyleBits::TEXT_TRANSFORM => self.set_text_transform(parent.text_transform),
+                    StyleBits::WHITE_SPACE => self.set_white_space(parent.white_space),
+                    StyleBits::WORD_SPACING => self.set_word_spacing(parent.word_spacing),
                     _ => {}
                 }
 
@@ -663,7 +663,7 @@ impl Default for StyleContext {
             text_transform: Default::default(),
             letter_spacing: Default::default(),
             line_height: Dimension::Em(1.2),
-            font_weight: 300,
+            font_weight: 400,
             word_spacing: Default::default(),
             bg_color: Color::transparent(),
             bg_image: Image::None,

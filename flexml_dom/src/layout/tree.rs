@@ -130,6 +130,8 @@ impl LayoutPartialTree for LayoutTree {
     where
         Self: 'a;
 
+    type CustomIdent = String;
+
     fn get_core_container_style(&self, node_id: NodeId) -> Self::CoreContainerStyle<'_> {
         &self.node_from_id(node_id).style
     }
@@ -238,8 +240,8 @@ impl taffy::LayoutBlockContainer for LayoutTree {
 impl TraverseTree for LayoutTree {}
 
 impl RoundTree for LayoutTree {
-    fn get_unrounded_layout(&self, node_id: NodeId) -> &Layout {
-        &self.node_from_id(node_id).unrounded_layout
+    fn get_unrounded_layout(&self, node_id: NodeId) -> Layout {
+        self.node_from_id(node_id).unrounded_layout
     }
 
     fn set_final_layout(&mut self, node_id: NodeId, layout: &Layout) {
@@ -263,7 +265,7 @@ impl PrintTree for LayoutTree {
         }
     }
 
-    fn get_final_layout(&self, node_id: NodeId) -> &Layout {
-        &self.node_from_id(node_id).final_layout
+    fn get_final_layout(&self, node_id: NodeId) -> Layout {
+        self.node_from_id(node_id).final_layout
     }
 }

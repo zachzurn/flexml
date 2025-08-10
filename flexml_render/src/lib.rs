@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::num::NonZeroUsize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Result};
 use vello::kurbo::{Affine, RoundedRect, RoundedRectRadii, Stroke};
@@ -134,7 +134,7 @@ fn render_fragment_group(scene: &mut Scene, group: &FragmentGroup) {
 }
 
 
-pub async fn render_layout(layout: &FlexmlLayout) -> Result<()> {
+pub async fn render_layout(layout: &FlexmlLayout, output_path: &PathBuf) -> Result<()> {
     let mut context = RenderContext::new();
     let device_id = context.device(None).await.ok_or_else(|| anyhow::anyhow!("No device"))?;
     let device_handle = &mut context.devices[device_id];
@@ -146,7 +146,7 @@ pub async fn render_layout(layout: &FlexmlLayout) -> Result<()> {
         RendererOptions {
             use_cpu: false,
             num_init_threads: NonZeroUsize::new(1),
-            antialiasing_support: vello::AaSupport::area_only(),
+            antialiasing_support: vello::AaSupport::all(),
             ..Default::default()
         },
     )
@@ -236,8 +236,7 @@ pub async fn render_layout(layout: &FlexmlLayout) -> Result<()> {
     }
 
     // Save as PNG
-    let output_path = PathBuf::from("box.png");
-    let mut file = File::create(&output_path)?;
+    let mut file = File::create(output_path)?;
     let mut encoder = png::Encoder::new(&mut file, width, height);
     encoder.set_color(png::ColorType::Rgba);
     encoder.set_depth(png::BitDepth::Eight);
@@ -257,8 +256,14 @@ mod tests {
     use flexml_dom::document::parser::FlexmlDocument;
     use flexml_dom::layout::{FlexmlLayout, FlexmlLayoutContext};
 
+
+
     #[test]
-    fn test_render_box_scene() -> Result<()> {
+    fn render_rendertest() {
+        render_flexml_test("rendertest");
+    }
+
+    fn render_flexml_test(filename: &str) {
         //let input = "[width: 5in + height: 2in + bgColor: #ff0000AA this is some text \r\n and some more on a new line] [box + bgColor: #00FF00AA + height: 1in]";
 
         let sample_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -266,7 +271,7 @@ mod tests {
             .join("resources")
             .join("test")
             .join("in")
-            .join(format!("{}.{}", "rendertest", "flexml"));
+            .join(format!("{}.{}", filename, "flexml"));
 
         let input = std::fs::read_to_string(sample_file.to_str().unwrap()).unwrap();
 
@@ -279,7 +284,15 @@ mod tests {
 
         let layout = FlexmlLayout::new(&document, FlexmlLayoutContext::default());
 
-        pollster::block_on(render_layout(&layout))?;
-        Ok(())
+        let out = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("resources")
+            .join("test")
+            .join("out")
+            .join(format!("{}.{}", filename, "png"));
+
+        let input = std::fs::read_to_string(sample_file.to_str().unwrap()).unwrap();
+
+        pollster::block_on(render_layout(&layout, &out)).unwrap();
     }
 }

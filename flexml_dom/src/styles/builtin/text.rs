@@ -77,7 +77,7 @@ pub static TEXT_STYLE: BuiltInStyle = BuiltInStyle {
 const FONT_WEIGHT_VARIANTS: &[u16] = &[
     100,
     700,
-    300,
+    400,
     800,
     300,
     100,
