@@ -212,6 +212,14 @@ impl StyleValueParser {
             }
         }
 
+        if let Ok(value) = input.parse::<f32>() {
+            return if value < 0.0 {
+                StyleValue::NegativeNumber(Dimension::Px(value))
+            } else {
+                StyleValue::PositiveNumber(Dimension::Px(value))
+            }
+        }
+
         StyleValue::Empty
     }
 

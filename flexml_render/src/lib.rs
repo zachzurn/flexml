@@ -263,6 +263,11 @@ mod tests {
         render_flexml_test("rendertest");
     }
 
+    #[test]
+    fn render_sample() {
+        render_flexml_test("flexbox");
+    }
+
     fn render_flexml_test(filename: &str) {
         //let input = "[width: 5in + height: 2in + bgColor: #ff0000AA this is some text \r\n and some more on a new line] [box + bgColor: #00FF00AA + height: 1in]";
 

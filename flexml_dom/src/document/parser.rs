@@ -462,7 +462,7 @@ impl<'a> FlexmlDocument<'a> {
 
         //Trim trailing text
         if let Some(Node::Text(last)) = children.last_mut() {
-            *last = last.trim_end();
+           *last = last.trim_end();
         }
 
         if !close_found {

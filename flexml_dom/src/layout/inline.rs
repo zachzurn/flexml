@@ -64,9 +64,11 @@ fn transform_with_ws(
 
     match preserve_whitespace {
         WhiteSpace::Normal | WhiteSpace::NoWrap => {
-            let words: Vec<&str> = transformed
-                .split_whitespace()
-                .collect();
+            let had_leading_ws = text.starts_with(char::is_whitespace);
+            let had_trailing_ws = text.ends_with(char::is_whitespace);
+            println!("text {:?} leading_ws {}, trailing_ws {} allow_pre_ws {}", text, had_leading_ws, had_trailing_ws, allow_pre_ws);
+
+            let words: Vec<&str> = transformed.split_whitespace().collect();
 
             if words.is_empty() {
                 return (String::new(), false);
@@ -74,10 +76,14 @@ fn transform_with_ws(
 
             result = words.join(" ");
 
-            trailing_ws = {
-                let trimmed_len = text.trim_end().len();
-                trimmed_len < text.len()
-            };
+            // If leading ws should be preserved, add one at the front
+            if allow_pre_ws && had_leading_ws {
+                result.insert(0, ' ');
+            }
+
+            if had_trailing_ws {
+                result.push(' ');
+            }
         }
         WhiteSpace::Pre | WhiteSpace::PreWrap | WhiteSpace::PreLine => {
             if !allow_pre_ws {
@@ -113,6 +119,7 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
             LayoutNodeKind::Text => {
                 if let Some(text) = &child_node.text {
                     let (transformed, has_trailing_ws) = transform_with_ws(text, ws, transform, !trailing_ws);
+                    if transformed.is_empty() { continue; }
                     trailing_ws = has_trailing_ws;
 
                     let start = i_text.len();
@@ -130,6 +137,9 @@ pub(super) fn compute_inline_layout (tree: &mut LayoutTree, node_id: NodeId, inp
                 let height = layout.content_size.height;
 
                 i_items.push(InlineItemBuilder::Inline { id: child_id, index: inline_index, width, height });
+
+                // inline block elements reset the trailing_ws to allow for opening whitespace
+                trailing_ws = false;
             }
 
             // Inline content should only contain Containers and Text

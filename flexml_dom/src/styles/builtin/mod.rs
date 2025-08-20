@@ -69,7 +69,7 @@ fn length_to_context(value: &StyleValue, variants: &[Dimension]) -> Option<Dimen
     }
 }
 
-pub static ROOT_STYLE_NAME: &str = "PAGE";
+pub static ROOT_STYLE_NAME: &str = "flexml";
 
 pub static DEFAULT_BUILTINS : &[&BuiltInStyle] = &[
     &page::PAGE_HEIGHT,

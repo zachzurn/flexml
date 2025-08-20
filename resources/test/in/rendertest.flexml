@@ -1,6 +1,7 @@
-{PAGE =
+{flexml =
     width: 5in +
-    height: 5in
+    height: 5in +
+    basePath: "../"
 }
 
 {lightBlueBox =

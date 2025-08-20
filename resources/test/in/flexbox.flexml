@@ -1,0 +1,11 @@
+{ b =
+    bgColor: #0000FF0A +
+    padding: 20px +
+    width: 250px +
+    borderRadius: 10px +
+}
+
+
+[flex + gap: 10px
+    [b] [b] [b] [b] [b] [b]
+]
