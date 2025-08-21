@@ -1,13 +1,13 @@
 {flexml =
-    width: 5in +
-    height: 5in +
+    pageWidth: 5in
+    pageHeight: 5in
     basePath: "../"
 }
 
 {lightBlueBox =
-    bgColor: #0000FF0A +
-    padding: 20px +
-    width: 250px +
+    >bgColor: #0000FF0A
+    padding: 20px
+    width: 250px
     borderRadius: 10px
 }
 
@@ -27,6 +27,6 @@
     [box breaking block element]
 ]
 
-[lightBlueBox + bgColor: #abedd7
+[lightBlueBox: #abedd7
     A variant of the light blue box
 ]

@@ -169,8 +169,12 @@ impl<'a> FlexmlDocument<'a> {
         self.max_depth
     }
 
-    pub fn print_nodes(&self) {
-        println!("📋 {}", self.name);
+    pub fn print_document(&self) {
+        println!("┌📋 {}", self.name);
+
+        for warning in &self.warnings {
+            println!("├⚠️ {}", warning.message);
+        }
 
         for node in &self.nodes {
             node.print_tree(&self.style_registry, "", false)
@@ -348,12 +352,12 @@ impl<'a> FlexmlDocument<'a> {
 
         // Style name
         let name = match self.peek() {
-            Some((Named, _)) => {
+            Some((StyleName, _)) => {
                 let (_, name) = self.take().unwrap(); // consume the name
                 name
             }
             _ => {
-                // No Named → fallback to text
+                // No Named, fallback to text
                 // This is valid and is not an error
                 // We will consume as text
                 return self.parse_text_run(start_span);
@@ -364,10 +368,12 @@ impl<'a> FlexmlDocument<'a> {
         self.skip_separator(StyleNameSeparator);
 
         // the + can come before { myStyle = +bold+italic}
-        // mainly used for multiline styling
-        self.skip_separator(StyleSeparator);
+        // mainly used for multiline styling.
+        self.skip_separator_or_ws(StyleSeparator);
 
-        let (styles, forwarders) = self.parse_styles();
+        // Contiguous styles come next, with newlines being allowed
+        // as separators. This is only allowed in style definitions.
+        let (styles, forwarders) = self.parse_styles(true);
 
         if styles.is_empty() {
             self.warn(self.lexer.span(), StyleContainerNoStyles)
@@ -379,7 +385,9 @@ impl<'a> FlexmlDocument<'a> {
                 // Consume the closing tag
                 self.take();
             }
-            _ => self.warn(self.lexer.span(), UnclosedStyleContainer),
+            _ => {
+                self.warn(self.lexer.span(), UnclosedStyleContainer)
+            }
         }
 
         let registered = self.style_registry.register_style(name, styles, forwarders);
@@ -431,7 +439,7 @@ impl<'a> FlexmlDocument<'a> {
     fn parse_box_container(&mut self) -> Node<'a> {
         // We ignore forwarders on inline styles
         // Forwarders only apply to style definitions
-        let (styles, _forwarders) = self.parse_styles();
+        let (styles, _forwarders) = self.parse_styles(false);
         let mut children = Vec::new();
         let mut close_found = false;
 
@@ -475,27 +483,31 @@ impl<'a> FlexmlDocument<'a> {
     /// Styles always start with a named with alternating separators
     /// Styles always end on a named and consume any trailing whitespace
     /// or newlines
-    fn parse_styles(&mut self) -> (Vec<AtomicStyle>, Vec<StyleId>) {
+    fn parse_styles(&mut self, allow_newline_separator: bool) -> (Vec<AtomicStyle>, Vec<StyleId>) {
         let mut styles = Vec::new();
 
         while let Some((tok, _)) = self.peek() {
             match tok {
-                Named => {
+                StyleName => {
                     let (_, name) = self.take().unwrap();
                     let mut value = None;
 
-                    if self.skip_separator(StyleParamSeparator) {
-                        if let Some((Named, arg_val)) = self.peek() {
-                            value = Some(arg_val.trim());
-                            self.take();
-                        } else {
-                            self.warn(self.lexer.span(), ExpectedStyleValue);
-                        }
+                    if let Some((StyleValue, arg_val)) = self.peek() {
+                        // Style values come in with separators and possibly quoted
+                        value = Some(arg_val
+                            .trim_start_matches([':', ' ', '\t', '"'])
+                            .trim_end_matches('"')
+                        );
+                        self.take();
                     }
 
                     styles.push(RawStyle { name, value });
 
-                    if !self.skip_separator(StyleSeparator) {
+                    if allow_newline_separator {
+                        if !self.skip_separator_or_ws(StyleSeparator) {
+                            break;
+                        }
+                    } else if !self.skip_separator(StyleSeparator) {
                         break;
                     }
                 }
@@ -598,6 +610,30 @@ impl<'a> FlexmlDocument<'a> {
     fn skip_separator(&mut self, sep: Token) -> bool {
         self.skip_whitespace();
         let mut found = false;
+
+        // peek for sep token and skip if found
+        if let Some((next, _)) = self.peek() && *next == sep {
+            found = true;
+            self.take();
+        }
+
+        self.skip_whitespace();
+
+        found
+    }
+
+    fn skip_separator_or_ws(&mut self, sep: Token) -> bool {
+        let mut found = false;
+
+        while let Some((tok, _)) = self.peek() {
+            match tok {
+                Whitespace => {
+                    self.take();
+                    found = true;
+                }
+                _ => break,
+            }
+        }
 
         // peek for sep token and skip if found
         if let Some((next, _)) = self.peek() && *next == sep {

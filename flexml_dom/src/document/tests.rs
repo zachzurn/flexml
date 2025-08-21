@@ -176,7 +176,7 @@ fn parse_unclosed_raw_warns() {
 // Styles should parse without any errors
 fn parse_styles_first() {
     let inputs = vec![
-        "{myStyle = bold+italic+size:3} [myStyle This is styled ]",
+        "{myStyle = >bold+italic+size:3} [myStyle This is styled ]",
         "   {myStyle = bold+italic+size:3} [myStyle This is styled ]",
         "\r\n{myStyle = bold+italic+ size:3} [myStyle This is styled ]",
         "{myStyle bold+italic+size:3} [myStyle This is styled ]",

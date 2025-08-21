@@ -6,17 +6,21 @@ pub enum Token {
     #[regex(r"[ \t\r\n\f]+", priority = 5)]
     Whitespace,
 
-    #[regex(r"[A-Za-z0-9>#\-\.]+", priority = 5)]
-    Named,
+    // Style name
+    #[regex(r">?[A-Za-z0-9]+", priority = 5)]
+    StyleName,
+
+    // Style value unquoted
+    #[regex(r"[ \t]*:[ \t]*([A-Za-z0-9._/#:%?&=@-]+)", priority = 6)]
+    // Quoted variant for urls
+    #[regex(r#"[ \t]*:[ \t]*"([^"]*)""#, priority = 6)]
+    StyleValue,
 
     #[token("=", priority = 5)]
     StyleNameSeparator,
 
     #[token("+", priority = 5)]
     StyleSeparator,
-
-    #[token(":", priority = 5)]
-    StyleParamSeparator,
 
     #[token("[", priority = 5)]
     BoxContainerOpen,
