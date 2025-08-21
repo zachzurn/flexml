@@ -1,6 +1,6 @@
 use crate::strings::{Chars, ValueErrors, ValueHelp};
 use crate::styles::context::Dimension;
-use crate::styles::style::StyleValue::{FontUrl, ImageUrl};
+use crate::styles::style::StyleValue::{FontUrl, ImageUrl, PathUrl};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Rgba {
@@ -13,7 +13,8 @@ pub struct Rgba {
 #[derive(PartialEq, Clone, Debug)]
 pub enum UrlType {
     Image,
-    Font
+    Font,
+    Path
 }
 
 pub enum StyleValueParser {
@@ -40,6 +41,7 @@ pub enum StyleValue {
 
     FontUrl(String),
     ImageUrl(String),
+    PathUrl(String),
 
     Match(u8),
     Color(Rgba),
@@ -180,7 +182,6 @@ impl StyleValueParser {
 
         for (i, unit) in DIMENSION_STR.iter().enumerate() {
             if input.ends_with(unit) {
-                println!("unit match {}",unit);
                 let number_part = &input[..input.len() - unit.len()];
 
                 return if let Ok(value) = number_part.parse::<f32>() {
@@ -229,6 +230,7 @@ impl StyleValueParser {
         match kind {
             UrlType::Font => FontUrl(s.to_string()),
             UrlType::Image => ImageUrl(s.to_string()),
+            UrlType::Path => PathUrl(s.to_string()),
         }
 
         //StyleValue::Invalid(ValueErrors::URL, ValueHelp::URL)

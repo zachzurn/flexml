@@ -130,6 +130,7 @@ impl StyleRegistry {
                     match kind {
                         UrlType::Image => "image url",
                         UrlType::Font => "font url",
+                        UrlType::Path => "path url",
                     }
                 },
             };

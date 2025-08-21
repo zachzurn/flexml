@@ -285,7 +285,7 @@ mod tests {
             .parse();
 
 
-        document.print_nodes();
+        document.print_document();
 
         let layout = FlexmlLayout::new(&document, FlexmlLayoutContext::default());
 

@@ -75,6 +75,7 @@ pub static DEFAULT_BUILTINS : &[&BuiltInStyle] = &[
     &page::PAGE_HEIGHT,
     &page::PAGE_WIDTH,
     &page::PAGE_DPI,
+    &page::BASE_PATH,
 
     &display::DISPLAY,
     &white_space::WHITE_SPACE,
