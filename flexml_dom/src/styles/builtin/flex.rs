@@ -1,5 +1,5 @@
 use crate::styles::context::{AlignContent, AlignItems, AlignSelf, Dimension, FlexDirection, FlexWrap, JustifyContent, StyleContext};
-use crate::styles::builtin::{dimension_to_context, float_to_context, length_to_context, style_context_match, BuiltInStyle};
+use crate::styles::builtin::{dimension_to_context, float_to_context, length_to_context, match_value, style_context_match, BuiltInStyle};
 use crate::styles::style::{StyleValue};
 use crate::styles::style::StyleValueParser::{Float, MatchOrFloat, Match, Number};
 
@@ -19,22 +19,23 @@ fn apply_align_content(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static ALIGN_CONTENT_MATCHES: &[&str] = &[
+    "flex-start",
+    "flex-end",
+    "center",
+    "space-between",
+    "space-around",
+    "stretch",
+];
 
 pub static ALIGN_CONTENT: BuiltInStyle = BuiltInStyle {
     name: "alignContent",
-    parser: Match(&[
-        "flex-start",
-        "flex-end",
-        "center",
-        "space-between",
-        "space-around",
-        "stretch"
-    ]),
+    parser: Match(ALIGN_CONTENT_MATCHES),
     styles: &[
-        ("contentStart", StyleValue::Match(0)),
-        ("contentStretch", StyleValue::Match(5)),
+        ("contentStart", match_value(0, ALIGN_CONTENT_MATCHES)),
+        ("contentStretch", match_value(5, ALIGN_CONTENT_MATCHES)),
     ],
-    apply_style: apply_align_content
+    apply_style: apply_align_content,
 };
 
 
@@ -53,13 +54,20 @@ fn apply_flex_direction(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static FLEX_DIRECTION_MATCHES: &[&str] = &[
+    "row",
+    "row-reverse",
+    "column",
+    "column-reverse",
+];
+
 pub static FLEX_DIRECTION: BuiltInStyle = BuiltInStyle {
     name: "flexDirection",
-    parser: Match(&["row", "row-reverse", "column", "column-reverse"]),
+    parser: Match(FLEX_DIRECTION_MATCHES),
     styles: &[
-        ("row", StyleValue::Match(0)),
-        ("col", StyleValue::Match(2)),
-        ("column", StyleValue::Match(2)),
+        ("row", match_value(0, FLEX_DIRECTION_MATCHES)),
+        ("col", match_value(2, FLEX_DIRECTION_MATCHES)),
+        ("column", match_value(2, FLEX_DIRECTION_MATCHES)),
     ],
     apply_style: apply_flex_direction,
 };
@@ -76,12 +84,17 @@ fn apply_flex_basis(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static FLEX_BASIS_MATCHES: &[&str] = &[
+    "auto",
+    "content",
+];
+
 pub static FLEX_BASIS: BuiltInStyle = BuiltInStyle {
     name: "flexBasis",
-    parser: MatchOrFloat(&["auto", "content"]),
+    parser: MatchOrFloat(FLEX_BASIS_MATCHES),
     styles: &[
-        ("basisAuto", StyleValue::Match(0)),
-        ("basisContent", StyleValue::Match(1)),
+        ("basisAuto", match_value(0, FLEX_BASIS_MATCHES)),
+        ("basisContent", match_value(1, FLEX_BASIS_MATCHES)),
     ],
     apply_style: apply_flex_basis,
 };
@@ -132,12 +145,18 @@ fn apply_flex_wrap(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static FLEX_WRAP_MATCHES: &[&str] = &[
+    "nowrap",
+    "wrap",
+    "wrap-reverse",
+];
+
 pub static FLEX_WRAP: BuiltInStyle = BuiltInStyle {
     name: "flexWrap",
-    parser: Match(&["nowrap", "wrap", "wrap-reverse"]),
+    parser: Match(FLEX_WRAP_MATCHES),
     styles: &[
-        ("noWrap", StyleValue::Match(0)),
-        ("wrapReverse", StyleValue::Match(2)),
+        ("noWrap", match_value(0, FLEX_WRAP_MATCHES)),
+        ("wrapReverse", match_value(2, FLEX_WRAP_MATCHES)),
     ],
     apply_style: apply_flex_wrap,
 };
@@ -171,12 +190,20 @@ fn apply_align_items(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static ALIGN_ITEMS_MATCHES: &[&str] = &[
+    "flex-start",
+    "flex-end",
+    "center",
+    "baseline",
+    "stretch",
+];
+
 pub static ALIGN_ITEMS: BuiltInStyle = BuiltInStyle {
     name: "alignItems",
-    parser: Match(&["flex-start", "flex-end", "center", "baseline", "stretch"]),
+    parser: Match(ALIGN_ITEMS_MATCHES),
     styles: &[
-        ("itemsStart", StyleValue::Match(0)),
-        ("itemsCenter", StyleValue::Match(2)),
+        ("itemsStart", match_value(0, ALIGN_ITEMS_MATCHES)),
+        ("itemsCenter", match_value(2, ALIGN_ITEMS_MATCHES)),
     ],
     apply_style: apply_align_items,
 };
@@ -198,12 +225,21 @@ fn apply_align_self(value: &StyleValue, context: &mut StyleContext) {
 }
 
 
+pub static ALIGN_SELF_MATCHES: &[&str] = &[
+    "auto",
+    "flex-start",
+    "flex-end",
+    "center",
+    "baseline",
+    "stretch",
+];
+
 pub static ALIGN_SELF: BuiltInStyle = BuiltInStyle {
     name: "alignSelf",
-    parser: Match(&["auto", "flex-start", "flex-end", "center", "baseline", "stretch"]),
+    parser: Match(ALIGN_SELF_MATCHES),
     styles: &[
-        ("selfStart", StyleValue::Match(1)),
-        ("selfStretch", StyleValue::Match(5)),
+        ("selfStart", match_value(1, ALIGN_SELF_MATCHES)),
+        ("selfStretch", match_value(5, ALIGN_SELF_MATCHES)),
     ],
     apply_style: apply_align_self,
 };
@@ -239,19 +275,25 @@ fn apply_justify_content(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static JUSTIFY_CONTENT_MATCHES: &[&str] = &[
+    "flex-start",
+    "flex-end",
+    "center",
+    "space-between",
+    "space-around",
+    "space-evenly"
+];
 
 pub static JUSTIFY_CONTENT: BuiltInStyle = BuiltInStyle {
     name: "justifyContent",
-    parser: Match(&[
-        "flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly"
-    ]),
+    parser: Match(JUSTIFY_CONTENT_MATCHES),
     styles: &[
-        ("contentStart", StyleValue::Match(0)),
-        ("contentEnd", StyleValue::Match(1)),
-        ("contentCenter", StyleValue::Match(2)),
-        ("contentSpaceBetween", StyleValue::Match(3)),
-        ("contentSpaceAround", StyleValue::Match(4)),
-        ("contentSpaceEvenly", StyleValue::Match(5)),
+        ("contentStart", match_value(0, JUSTIFY_CONTENT_MATCHES)),
+        ("contentEnd", match_value(1, JUSTIFY_CONTENT_MATCHES)),
+        ("contentCenter", match_value(2, JUSTIFY_CONTENT_MATCHES)),
+        ("contentSpaceBetween", match_value(3, JUSTIFY_CONTENT_MATCHES)),
+        ("contentSpaceAround", match_value(4, JUSTIFY_CONTENT_MATCHES)),
+        ("contentSpaceEvenly", match_value(5, JUSTIFY_CONTENT_MATCHES)),
     ],
     apply_style: apply_justify_content,
 };

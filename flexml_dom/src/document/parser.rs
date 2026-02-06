@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use super::nodes::{Node};
 use super::tokens::Token;
 use super::tokens::Token::*;
@@ -17,6 +18,7 @@ pub struct FlexmlDocument<'a> {
     pub(crate) styles: Vec<Node<'a>>,
     pub(crate) name: String,
 
+    base_path: Option<PathBuf>,
     parsed: bool,
     lexer: Lexer<'a, Token>,
     peeked: Option<(Token, &'a str)>,
@@ -47,7 +49,7 @@ impl<'a> FlexmlDocument<'a> {
             node_guard: Guard::new(10_000),
             depth_guard: Guard::new(50),
             parsed: false,
-
+            base_path: None,
         };
 
         if input.is_empty() {
@@ -55,6 +57,12 @@ impl<'a> FlexmlDocument<'a> {
         }
 
         parser
+    }
+
+    pub fn with_base_path(mut self, path: PathBuf) -> Self {
+        self.style_registry.set_base_path(&path);
+        self.base_path = Some(path);
+        self
     }
 
     pub fn with_max_depth(mut self, max_depth: usize) -> Self {
@@ -170,7 +178,7 @@ impl<'a> FlexmlDocument<'a> {
     }
 
     pub fn print_document(&self) {
-        println!("┌📋 {}", self.name);
+        println!("┌📋 {} ────────────────────────────", self.name);
 
         for warning in &self.warnings {
             println!("├⚠️ {}", warning.message);
@@ -179,6 +187,8 @@ impl<'a> FlexmlDocument<'a> {
         for node in &self.nodes {
             node.print_tree(&self.style_registry, "", false)
         }
+
+        println!("└──────────────────────────── END")
     }
 }
 

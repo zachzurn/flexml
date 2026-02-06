@@ -17,6 +17,6 @@ mod tests {
         let document = FlexmlDocument::new(input)
             .parse();
 
-        let layout = FlexmlLayout::new(&document, FlexmlLayoutContext::default());
+        let _layout = FlexmlLayout::new(&document, FlexmlLayoutContext::default());
     }
 }

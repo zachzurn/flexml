@@ -26,7 +26,7 @@ fn style_context_match<T>(
 ) -> Option<T> where
     T: Copy,
 {
-    if let StyleValue::Match(i) = value && let Some(val) = variants.get(*i as usize) {
+    if let StyleValue::Match(i,_) = value && let Some(val) = variants.get(*i as usize) {
         Some(*val)
     } else{
       None
@@ -62,11 +62,15 @@ fn length_to_context(value: &StyleValue, variants: &[Dimension]) -> Option<Dimen
         StyleValue::NegativeNumber(dimension) => {
             Some(*dimension)
         },
-        StyleValue::Match(i) => {
+        StyleValue::Match(i,_) => {
             variants.get(*i as usize).copied()
         }
         _ => None
     }
+}
+
+const fn match_value(idx: u8, matches: &'static [&'static str]) -> StyleValue {
+    StyleValue::Match(idx, matches[idx as usize])
 }
 
 pub static ROOT_STYLE_NAME: &str = "flexml";
@@ -75,7 +79,6 @@ pub static DEFAULT_BUILTINS : &[&BuiltInStyle] = &[
     &page::PAGE_HEIGHT,
     &page::PAGE_WIDTH,
     &page::PAGE_DPI,
-    &page::BASE_PATH,
 
     &display::DISPLAY,
     &white_space::WHITE_SPACE,

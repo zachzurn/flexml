@@ -36,6 +36,7 @@ enum InlineItemBuilder<'a> {
     Inline{id: NodeId, index: usize, width: f32, height: f32},
 }
 
+/// Transform a string, preserving whitespace and performing text transformations
 fn transform_with_ws(
     text: &str,
     preserve_whitespace: WhiteSpace,
@@ -66,7 +67,6 @@ fn transform_with_ws(
         WhiteSpace::Normal | WhiteSpace::NoWrap => {
             let had_leading_ws = text.starts_with(char::is_whitespace);
             let had_trailing_ws = text.ends_with(char::is_whitespace);
-            println!("text {:?} leading_ws {}, trailing_ws {} allow_pre_ws {}", text, had_leading_ws, had_trailing_ws, allow_pre_ws);
 
             let words: Vec<&str> = transformed.split_whitespace().collect();
 

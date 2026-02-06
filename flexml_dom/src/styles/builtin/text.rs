@@ -1,8 +1,8 @@
 use crate::styles::context::{FontFamily, FontStyle, StyleContext, TextAlign, TextDecoration, TextTransform};
-use crate::styles::builtin::{dimension_to_context, style_context_color, style_context_match, BuiltInStyle};
-use crate::styles::style::{StyleValue, UrlType};
+use crate::styles::builtin::{dimension_to_context, match_value, style_context_color, style_context_match, BuiltInStyle};
+use crate::styles::style::{PathType, StyleValue};
 use crate::styles::style::StyleValue::{Forward};
-use crate::styles::style::StyleValueParser::{Color, Match, PositiveNumber, Url};
+use crate::styles::style::StyleValueParser::{Color, Match, Path, PositiveNumber};
 
 fn apply_text_color(value: &StyleValue, context: &mut StyleContext) {
     if let Some(color) = style_context_color(value) {
@@ -26,7 +26,7 @@ fn apply_text_font(value: &StyleValue, context: &mut StyleContext) {
 
 pub static TEXT_FONT: BuiltInStyle = BuiltInStyle {
     name: "fontFamily",
-    parser: Url(&UrlType::Font),
+    parser: Path(PathType::Font),
     styles: &[
         ("font", Forward),
         ("textFont", Forward)
@@ -62,16 +62,23 @@ fn apply_text_style(value: &StyleValue, context: &mut StyleContext) {
 }
 
 
+pub static TEXT_STYLE_MATCHES: &[&str] = &[
+    "normal",
+    "italic",
+    "oblique",
+];
+
 pub static TEXT_STYLE: BuiltInStyle = BuiltInStyle {
     name: "fontStyle",
-    parser: Match(&["normal", "italic", "oblique"]),
+    parser: Match(TEXT_STYLE_MATCHES),
     styles: &[
         ("textStyle", Forward),
         ("style", Forward),
-        ("italic", StyleValue::Match(1)),
+        ("italic", match_value(1, TEXT_STYLE_MATCHES)),
     ],
     apply_style: apply_text_style,
 };
+
 
 
 const FONT_WEIGHT_VARIANTS: &[u16] = &[
@@ -97,30 +104,32 @@ fn apply_text_weight(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static TEXT_WEIGHT_MATCHES: &[&str] = &[
+    "normal",
+    "bold",
+    "light",
+    "bolder",
+    "lighter",
+    "100",
+    "200",
+    "300",
+    "400",
+    "500",
+    "600",
+    "700",
+    "800",
+    "900",
+];
+
 pub static TEXT_WEIGHT: BuiltInStyle = BuiltInStyle {
     name: "fontWeight",
-    parser: Match(&[
-        "normal",
-        "bold",
-        "light",
-        "bolder",
-        "lighter",
-        "100",
-        "200",
-        "300",
-        "400",
-        "500",
-        "600",
-        "700",
-        "800",
-        "900"
-    ]),
+    parser: Match(TEXT_WEIGHT_MATCHES),
     styles: &[
         ("fontWeight", Forward),
         ("textWeight", Forward),
-        ("normal", StyleValue::Match(0)),
-        ("bold", StyleValue::Match(1)),
-        ("light", StyleValue::Match(2)),
+        ("normal", match_value(0, TEXT_WEIGHT_MATCHES)),
+        ("bold", match_value(1, TEXT_WEIGHT_MATCHES)),
+        ("light", match_value(2, TEXT_WEIGHT_MATCHES)),
     ],
     apply_style: apply_text_weight,
 };
@@ -181,16 +190,24 @@ fn apply_text_transform(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static TEXT_TRANSFORM_MATCHES: &[&str] = &[
+    "none",
+    "capitalize",
+    "uppercase",
+    "lowercase",
+];
+
 pub static TEXT_TRANSFORM: BuiltInStyle = BuiltInStyle {
     name: "textTransform",
-    parser: Match(&["none", "capitalize", "uppercase", "lowercase"]),
+    parser: Match(TEXT_TRANSFORM_MATCHES),
     styles: &[
-        ("uppercase", StyleValue::Match(2)),
-        ("lowercase", StyleValue::Match(3)),
-        ("capitalize", StyleValue::Match(4)),
+        ("uppercase", match_value(2, TEXT_TRANSFORM_MATCHES)),
+        ("lowercase", match_value(3, TEXT_TRANSFORM_MATCHES)),
+        ("capitalize", match_value(1, TEXT_TRANSFORM_MATCHES)),
     ],
     apply_style: apply_text_transform,
 };
+
 
 
 const TEXT_ALIGN_VARIANTS: &[TextAlign] = &[
@@ -206,17 +223,25 @@ fn apply_text_align(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static TEXT_ALIGN_MATCHES: &[&str] = &[
+    "left",
+    "right",
+    "center",
+    "justify",
+];
+
 pub static TEXT_ALIGN: BuiltInStyle = BuiltInStyle {
     name: "textAlign",
-    parser: Match(&["left", "right", "center", "justify"]),
+    parser: Match(TEXT_ALIGN_MATCHES),
     styles: &[
-        ("left", StyleValue::Match(0)),
-        ("right", StyleValue::Match(1)),
-        ("center", StyleValue::Match(2)),
-        ("justify", StyleValue::Match(3)),
+        ("left", match_value(0, TEXT_ALIGN_MATCHES)),
+        ("right", match_value(1, TEXT_ALIGN_MATCHES)),
+        ("center", match_value(2, TEXT_ALIGN_MATCHES)),
+        ("justify", match_value(3, TEXT_ALIGN_MATCHES)),
     ],
     apply_style: apply_text_align,
 };
+
 
 
 const TEXT_DECORATION_VARIANTS: &[TextDecoration] = &[
@@ -232,13 +257,20 @@ fn apply_text_decoration(value: &StyleValue, context: &mut StyleContext) {
     }
 }
 
+pub static TEXT_DECORATION_MATCHES: &[&str] = &[
+    "none",
+    "underline",
+    "overline",
+    "line-through",
+];
+
 pub static TEXT_DECORATION: BuiltInStyle = BuiltInStyle {
     name: "textDecoration",
-    parser: Match(&["none", "underline", "overline", "line-through"]),
+    parser: Match(TEXT_DECORATION_MATCHES),
     styles: &[
-        ("underline", StyleValue::Match(1)),
-        ("overline", StyleValue::Match(2)),
-        ("strike", StyleValue::Match(3)),
+        ("underline", match_value(1, TEXT_DECORATION_MATCHES)),
+        ("overline", match_value(2, TEXT_DECORATION_MATCHES)),
+        ("strike", match_value(3, TEXT_DECORATION_MATCHES)),
     ],
     apply_style: apply_text_decoration,
 };

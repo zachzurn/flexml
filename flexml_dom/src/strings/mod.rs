@@ -1,5 +1,7 @@
 pub struct ValueHelp;
 
+/// Eventually we may want to translate these strings if there is a desire
+
 impl ValueHelp {
     pub const NUMBER: &'static [&'static str] = &["1", "100", "-100", "100%"];
     pub const POSITIVE_NUMBER: &'static [&'static str] = &["1", "100", "100%"];
@@ -8,6 +10,11 @@ impl ValueHelp {
     pub const FATAL_MATCH: &'static [&'static str] = &["This atomic style is broken"];
     pub const COLOR: &'static [&'static str] = &["#FFFFFF", "#FF", "#FF0000FF"];
     pub const FLOAT: &'static [&'static str] = &["0", "1.0", "-1.0"];
+    pub const DIRECTORY: &'static [&'static str] = &["assets/files/", "/var/root/files"];
+    pub const FILE: &'static [&'static str] = &["file.ext"];
+    pub const IMAGE: &'static [&'static str] = &["file.png", "/assets/image.jpg", "../image.png", "drawing.svg"];
+    pub const FONT: &'static [&'static str] = &["helvetica.ttf", "/fonts/bebas.otf",];
+    pub const FONT_EMPTY: &'static [&'static str] = &["fonts/bebas.otf", "helveltica*.ttf"];
 }
 
 pub struct ValueErrors;
@@ -21,6 +28,11 @@ impl ValueErrors {
     pub const URL: &'static str = "Invalid URL";
     pub const COLOR: &'static str = "Invalid color";
     pub const FLOAT: &'static str = "Invalid decimal number";
+    pub const DIRECTORY: &'static str = "Path must be a directory";
+    pub const FILE: &'static str = "Path must be a file";
+    pub const IMAGE: &'static str = "Invalid image file path";
+    pub const FONT: &'static str = "Invalid font file path";
+    pub const FONT_EMPTY: &'static str = "Font path had no fonts";
 }
 
 pub struct Chars;

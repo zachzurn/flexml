@@ -1,10 +1,15 @@
+{Mona = fontFamily: "../assets/MonaSans*.otf"}
+{Hubot = fontFamily: "../assets/HubotSans*.otf"}
+
 {flexml =
+    Mona
     pageWidth: 5in
     pageHeight: 5in
-    basePath: "../"
+    pixelsPerInch: 350
 }
 
 {lightBlueBox =
+    >color
     >bgColor: #0000FF0A
     padding: 20px
     width: 250px
@@ -24,9 +29,10 @@
     [inline this is inline block]
     with some inline content here [italic which is italic and green ]
     with some more text followed by a
-    [box breaking block element]
+    [box + Hubot breaking block element that shows up on its own line]
 ]
 
-[lightBlueBox: #abedd7
-    A variant of the light blue box
+[lightBlueBox: #00>#00FF0033 + Hubot
+    [display: block A variant of the light blue box, which should be green. This uses a style forward >bgColor from the lightBlueBox definition.]
+    [display: block The lightBlueBox: #00FF000A forwards to the bgColor style value.]
 ]

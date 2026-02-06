@@ -1,111 +1,207 @@
-# Flexml
+# Flexml {🎨}
 
-A simple human friendly document rendering language with support for flexible layout.
+A lightweight, human-friendly document rendering language with flexible layout capabilities.
 
+Flexml combines the simplicity of Markdown with the power of CSS, letting you create nicely formatted documents using a bracket based syntax.
 
-Goals:
-* Geared toward receipts, invoices and reports that typically use html or a headless browser to render
-* Simple style definitions
-* Every unit based on base font size (padding, spacing, line height etc)
-* Simple styling that is defined at the start of the document (Reducing complexity and memory use)
-* Cascading styles 
-* Everything is a style and styles are simple names with possible single arguments (no padding: 10 10 10 10 type of thing)
-* Support images (Bitmap and SVG)
-* Human friendly markup that is easy to use for basic features but can have more advanced markup
-* Pages (Width/Height/Density) provided outside of the markup (render multiple versions at different sizes)
-* Simple tag elements like <CurrentPage> <TotalPages> <NewPage> and flex grow container <->
-* Nested boxes with box model, flex, table and inline
-* Repeatable headers and footers that can be changed i.e. after a <NewPage> tag
-* Zero interactivity (With the exception of maybe links for certain formats)
-* Image and Html rendering initially (Html rendering for easier early renders)
-* Possibly add barcode and qr rendering in the future
+Think of Flexml as the sweet spot between Markdown and LaTeX.
 
+**Note**: Flexml is in early development. The syntax and features are subject to change.
 
-# Warning
+## Features
 
-Project is in EXTREMELY early state, but code and RFC docs will be pushed to the main branch regularly.
+- Easy to read and write, minimal boilerplate
+- Combine and compose styles like building blocks
+- Create reusable components with customizable parameters
+- Full flexbox support for complex layouts
 
-# Early Progress
+## Quick Start
 
-This flexml example renders the image below the code. This is a very early rendering and is lacking quite a bit.
+### Basic Element
 
-- PAGE style sets up the page width and height.
-- Styles define the look and use the Cascading additive style sheets.
-- Style forwarding is not implemented yet
-- We are using Parley for text layout, and are awaiting vertical alignment features
-- Whitespace handling is still incomplete
+Elements are defined with square brackets and can contain text and nested elements:
 
+```flexml
+[This is a simple element]
+
+[This is an element with [nested content]]
 ```
-{PAGE =
-    width: 5in +
-    height: 5in
-}
 
-{lightBlueBox =
-    bgColor: #0000FF0A +
-    padding: 20px +
-    width: 250px +
+### Style Definitions
+
+Define reusable styles with curly braces. 
+Style definitions are always defined before any element is defined.
+```flexml
+{styledBox =
+    bgColor: #FF0000
+    color: #FFFFFF
+    padding: 20px
     borderRadius: 10px
 }
 
-{bold = italic + color: #9a50ba}
-
-{italic = italic + color: #2fcc4e}
-
-{inline = display: inline-block + fontSize: 1.1em + color: #68c2e3 + bg: #fce99a}
-
-{box = box + bg: #fce99a + color: #000000 + padding: 5px + borderRadius: 5px + marginTop: 15px }
-
-[lightBlueBox
-    We have 😄 some [bold Bold Purple ] text that should wrap onto a new line
-    [inline this is inline block]
-    with some inline content here [italic which is italic and green ]
-    with some more text followed by a
-    [box breaking block element]
-]
-
-[lightBlueBox + bgColor: #abedd7
-    A variant of the light blue box
+[styledBox
+    This text will have a red background with white text
 ]
 ```
 
-![rendertest.png](resources/test/out/rendertest.png)
+### Style Composition
 
-# Flexml Spec
+Combine multiple styles using the `+` operator:
+```flexml
+{redBox = bgColor: #FF0000 + color: #FFFFFF}
+{boldText = fontWeight: bold}
+{largeText = fontSize: 24px}
 
-See the RFC in the wiki for more details
-
+[redBox + boldText + largeText
+    This combines all three styles
+]
 ```
-{ redBox = 
-    colorText: red
-    pad: 2
+
+### Style Forwarding (Parameters)
+
+Create reusable components with customizable properties using the `>` forward operator:
+```flexml
+{colorBox =
+    >color              // Forward parameter (no default)
+    >bgColor: #F0F0F0   // Forward parameter with default
+    padding: 20px
+    borderRadius: 5px
 }
 
-{ header = bold + sizeText: 2  }
-
-[redBox This box will be red with some padding ]
-
-This is some text [ This is in a box ] and [ Some more ]
-
-[flex
-    [ Some text on the left ] <-> [Some text on the right ]
+[colorBox: #FF0000>#00FF00
+    Red text on green background
 ]
 
-[table
-    [header [ a column ] [ a column ] ]
-    [ [ a column ] [ a column ] ]
-    [ [ a column ] [ a column ] ]
-]
-
-This is some raw |= text that can have [ literal text in it ] =|
-
-[bold + italic
-  A box with text in it
-]
-
-[small + 
- large +
- italic
-  This is a box with text [ And another ] 
+[colorBox: #0000FF
+    Blue text on default gray background
 ]
 ```
+
+The syntax `[colorBox: #FF0000>#00FF00 ...]` passes values to forwarded parameters in order:
+- First value (`#FF0000`) → `color`
+- Second value (`#00FF00`) → `bgColor`
+
+### Font Families
+
+Load font families using file patterns:
+```flexml
+{Mona = fontFamily: "../assets/MonaSans*.otf"}
+{Hubot = fontFamily: "../assets/HubotSans*.otf"}
+
+[Mona This text uses the Mona Sans font family]
+```
+
+Flexml automatically discovers all font weights and styles matching the pattern.
+
+## Complete Example
+
+Here's a full example demonstrating various features.
+
+The image below is a render from the current codebase.
+
+![Example Render](resources/test/out/rendertest.png)
+```flexml
+{Mona = fontFamily: "../assets/MonaSans*.otf"}
+{Hubot = fontFamily: "../assets/HubotSans*.otf"}
+
+{flexml =
+    Mona
+    pageWidth: 5in
+    pageHeight: 5in
+    pixelsPerInch: 350
+}
+
+{lightBlueBox =
+    >color
+    >bgColor: #0000FF0A
+    padding: 20px
+    width: 250px
+    borderRadius: 10px
+}
+
+{bold = fontWeight: bold + color: #9a50ba}
+{italic = fontStyle: italic + color: #2fcc4e}
+{inline = display: inline-block + fontSize: 1.1em + color: #68c2e3 + bgColor: #fce99a}
+{box = display: block + bgColor: #fce99a + color: #000000 + padding: 5px + borderRadius: 5px + marginTop: 15px}
+
+[lightBlueBox
+    We have 😄 some [bold Bold Purple] text that should wrap onto a new line
+    [inline this is inline block]
+    with some inline content here [italic which is italic and green]
+    with some more text followed by a
+    [box + Hubot breaking block element that shows up on its own line]
+]
+
+[lightBlueBox: #000000>#00FF000A + Hubot
+    [display: block 
+        A variant of the light blue box, which should be green. 
+        This uses a style forward >bgColor from the lightBlueBox definition.
+    ]
+    [display: block 
+        The lightBlueBox: #00FF000A syntax forwards to the bgColor style value.
+    ]
+]
+```
+
+## Available Style Properties
+
+### Layout
+- `display` - `block`, `inline`, `inline-block`, `flex`
+- `flexDirection` - `row`, `column`, `row-reverse`, `column-reverse`
+- `justifyContent` - `flex-start`, `flex-end`, `center`, `space-between`, `space-around`
+- `alignItems` - `flex-start`, `flex-end`, `center`, `stretch`, `baseline`
+- `width`, `height` - Size values (px, %, em, in, cm, mm, pt)
+- `padding`, `margin` - Spacing values
+- `gap` - Flexbox gap
+
+### Typography
+- `fontFamily` - Font family path pattern
+- `fontSize` - Font size
+- `fontWeight` - `normal`, `bold`, `100`-`900`
+- `fontStyle` - `normal`, `italic`, `oblique`
+- `color` - Text color (hex, rgba)
+- `lineHeight` - Line height
+- `textAlign` - `left`, `right`, `center`, `justify`
+
+### Visual
+- `bgColor` - Background color (hex, rgba)
+- `borderRadius` - Corner rounding
+- `opacity` - Transparency (0.0 - 1.0)
+
+### Page Setup (root only)
+Height can be auto for single page docs, otherwise pages are created
+- `pageWidth`, `pageHeight` - Page dimensions
+- `pixelsPerInch` - Resolution (DPI)
+
+## Project Status
+
+This is an active work in progress. Current priorities:
+
+- [x] Core syntax and parser
+- [x] Style system and composition
+- [x] Style forwarding/parameters
+- [x] Flexbox layout engine
+- [x] Text rendering and wrapping
+- [ ] Font family discovery and loading
+- [ ] Image embedding
+- [ ] Real world test documents (Invoices, Receipts)
+- [ ] Additional output formats (PDF, HTML)
+- [ ] Standard library of common styles
+
+
+## License
+
+Licensed under either of
+
+* Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Contributions are welcome! This project follows a "never crash" philosophy - the renderer should gracefully handle errors and provide helpful warnings rather than panicking.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.

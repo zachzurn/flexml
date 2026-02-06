@@ -685,3 +685,21 @@ impl Default for StyleContext {
 
 
 }
+
+impl core::fmt::Display for Dimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Dimension::Auto => write!(f, "auto"),
+            Dimension::Px(v) => write!(f, "{}px", v),
+            Dimension::Percent(v) => write!(f, "{}%", v),
+            Dimension::Zero => write!(f, "0"),
+            Dimension::Inch(v) => write!(f, "{}in", v),
+            Dimension::Em(v) => write!(f, "{}em", v),
+            Dimension::Content => write!(f, "content"),
+            Dimension::Mm(v) => write!(f, "{}mm", v),
+            Dimension::Point(v) => write!(f, "{}pt", v),
+            Dimension::Rem(v) => write!(f, "{}rem", v),
+            Dimension::Resolved(v) => write!(f, "{}(resolved)", v),
+        }
+    }
+}

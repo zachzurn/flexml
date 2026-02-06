@@ -1,5 +1,5 @@
 use crate::styles::context::{BorderStyle, StyleContext};
-use crate::styles::builtin::{dimension_to_context, style_context_color, style_context_match, BuiltInStyle};
+use crate::styles::builtin::{dimension_to_context, match_value, style_context_color, style_context_match, BuiltInStyle};
 use crate::styles::style::StyleValue;
 use crate::styles::style::StyleValueParser::{Color, Match, Number};
 
@@ -106,17 +106,25 @@ fn apply_border_style(value: &StyleValue, context: &mut StyleContext) {
 }
 
 
+pub static BORDER_STYLE_MATCHES: &[&str] = &[
+    "solid",
+    "dashed",
+    "dotted",
+    "none",
+];
+
 pub static BORDER_STYLE: BuiltInStyle = BuiltInStyle {
     name: "borderStyle",
-    parser: Match(&["solid", "dashed", "dotted", "none"]),
+    parser: Match(BORDER_STYLE_MATCHES),
     styles: &[
-        ("solidBorder", StyleValue::Match(0)),
-        ("dashedBorder", StyleValue::Match(1)),
-        ("dottedBorder", StyleValue::Match(2)),
-        ("borderless", StyleValue::Match(2)),
+        ("solidBorder", match_value(0, BORDER_STYLE_MATCHES)),
+        ("dashedBorder", match_value(1, BORDER_STYLE_MATCHES)),
+        ("dottedBorder", match_value(2, BORDER_STYLE_MATCHES)),
+        ("borderless", match_value(3, BORDER_STYLE_MATCHES)),
     ],
     apply_style: apply_border_style,
 };
+
 
 
 fn apply_border_width(value: &StyleValue, context: &mut StyleContext) {

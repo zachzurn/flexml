@@ -40,14 +40,19 @@ impl<'a> Node<'a> {
             Node::Whitespace(ws) => format!("Whitespace [{}]", ws),
             Node::Tag { name } => format!("Tag <{}>", name),
             Node::StyleDefinition(style_id) => {
-                registry.debug_style_definition(*style_id)
+                registry.display_style_definition(*style_id)
             },
             Node::BoxContainer { styles, .. } => {
-                format!("Box [{}]", registry.debug_atomics(styles))
+                format!("Box [{}]", registry.display_atomics(styles))
             },
         };
 
-        println!("{}{}", line_prefix, node_label);
+        let node_icon = match self {
+            Node::StyleDefinition(_style_id) => "🎨",
+            _ => ""
+        };
+
+        println!("{}{}{}", line_prefix, node_icon, node_label);
 
         let child_prefix = if last {
             format!("{}    ", prefix)

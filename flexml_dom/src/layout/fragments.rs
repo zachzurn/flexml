@@ -256,6 +256,7 @@ pub(super) fn collect_fragments(
                             });
                         }
 
+                        // TODO this is difficult to get right. We might be missing some information.
                         PositionedLayoutItem::InlineBox(inline_box) => {
                             // We need to move the inline box from top aligned to baseline aligned
                             let effective_height = line_metrics.max_coord - line_metrics.min_coord;

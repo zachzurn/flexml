@@ -1,10 +1,18 @@
-use super::style::{AtomicStyle, FileId, FontId, ImageId, RawStyle, StyleId, StyleValue, StyleValueParser, UrlType};
+use super::style::{AtomicStyle, PathId, PathType, RawStyle, StyleId, StyleValue, StyleValueParser};
 use crate::strings::{Chars, ValueErrors, ValueHelp};
 use crate::styles::builtin::{BuiltInStyle, DEFAULT_BUILTINS, ROOT_STYLE_NAME};
 use crate::styles::context::StyleContext;
-use crate::styles::style::StyleValue::{Font, Image};
+use crate::styles::style::StyleValue::{Directory, Font, Image};
 use std::collections::{HashMap, HashSet};
-use url::Url;
+use std::path::{Component, Path, PathBuf};
+use crate::styles::files::{gather_fonts, FontFamily};
+
+#[derive(Debug)]
+pub enum PathValidation {
+    Missing,
+    File,
+    Dir,
+}
 
 /// Style Registry is the central place
 /// to register atomic styles (Things like fontSize, fontWeight, etc.)
@@ -16,19 +24,21 @@ pub struct StyleRegistry {
     names: Vec<String>,
     names_map: HashMap<String, StyleId>,
 
-    paths: Vec<String>,
-    paths_map: HashMap<String, StyleId>,
+    paths: Vec<PathBuf>,
+    paths_validation: Vec<PathValidation>,
+    paths_map: HashMap<PathBuf, PathId>,
+
+    font_families: HashMap<PathId, FontFamily>,
 
     definitions: HashMap<StyleId, Vec<AtomicStyle>>,
     forwarders: HashMap<StyleId, Vec<StyleId>>,
+
     first_style: usize,
     first_custom_style: usize,
+
     builtins_registered: bool,
     builtins: Vec<&'static BuiltInStyle>,
-
-    base_path: Url,
-    image_urls: HashMap<ImageId, Url>,
-    font_urls: HashMap<FontId, Url>,
+    base_path: PathBuf,
 }
 
 pub struct RegisteredStyle {
@@ -54,7 +64,10 @@ impl StyleRegistry {
             names_map: HashMap::new(),
 
             paths: vec![],
+            paths_validation: vec![],
             paths_map: HashMap::new(),
+
+            font_families: Default::default(),
 
             definitions: HashMap::new(),
             forwarders: HashMap::new(),
@@ -62,16 +75,12 @@ impl StyleRegistry {
             first_style: 0,
             first_custom_style: 0,
             builtins_registered: false,
-
-            font_urls: HashMap::new(),
-            image_urls: HashMap::new(),
-            base_path: Url::parse("flexml://").expect("Default base url is invalid."),
+            base_path: PathBuf::from("/"),
         }
     }
 
-    #[allow(dead_code)]
-    pub fn set_file_base_path(&mut self, base_path: &Url) {
-        self.base_path = base_path.clone();
+    pub fn set_base_path(&mut self, path: &PathBuf) {
+        self.base_path = path.clone();
     }
 
     pub fn with_builtins() -> StyleRegistry {
@@ -96,12 +105,45 @@ impl StyleRegistry {
         }
     }
 
+    pub fn display_style_definition(&self, id: StyleId) -> String {
+        let definition = self.get_definition(id);
+
+        let style_name = self.resolve_name(id).unwrap_or("No Style Defined = ").to_string();
+
+        if let Some(atomics) = definition {
+            format!("{} = {}", style_name, self.display_atomics(atomics))
+        } else {
+            "".to_string()
+        }
+    }
+
     pub fn debug_atomics(&self, atomics: &Vec<AtomicStyle>) -> String {
         let mut info = vec![];
         for atomic in atomics {
             info.push(format!("{}: {:?}", self.resolve_name(atomic.id).unwrap_or("No atomic"), atomic.value));
         }
         info.join(", ")
+    }
+
+    pub fn display_atomics(&self, atomics: &Vec<AtomicStyle>) -> String {
+        let mut info = vec![];
+        for atomic in atomics {
+            match atomic.value {
+                Font(path_id) => {
+                    let family = &self.font_families.get(&path_id);
+
+                    if let Some(family) = *family {
+                        info.push(format!("{}:{:?}", self.resolve_name(atomic.id).unwrap_or("No name!"), family));
+                    } else {
+                        info.push(format!("{}:{}", self.resolve_name(atomic.id).unwrap_or("No name!"), "No family!"));
+                    }
+                },
+                _ => {
+                    info.push(format!("{}:{}", self.resolve_name(atomic.id).unwrap_or("No name!"), atomic.value));
+                }
+            }
+        }
+        info.join(" • ")
     }
 
     #[allow(dead_code)]
@@ -126,11 +168,11 @@ impl StyleRegistry {
                 StyleValueParser::MatchOrFloat(matches) => {
                     &format!("Float value or one of: {}", matches.join(", "))
                 },
-                StyleValueParser::Url(kind) => {
+                StyleValueParser::Path(kind) => {
                     match kind {
-                        UrlType::Image => "image url",
-                        UrlType::Font => "font url",
-                        UrlType::Path => "path url",
+                        PathType::Image => "Image",
+                        PathType::Font => "Font",
+                        PathType::Directory => "Folder",
                     }
                 },
             };
@@ -144,7 +186,7 @@ impl StyleRegistry {
     /// dimensions that are necessary for layout
     ///
     /// Users can set properties on the root style and
-    /// some properties would break page layout
+    /// some properties would break page layout if not resolved
     pub fn resolve_root_style(&self, root: &mut StyleContext) {
         // Mark the root style as being the root style
         // This way atomic builtins that only appy to root
@@ -192,19 +234,56 @@ impl StyleRegistry {
         id
     }
 
-    /// Interns a string name and returns its StyleId.
-    /// If the name already exists, returns its existing StyleId.
-    fn intern_path(&mut self, path: &str) -> FileId {
-        if let Some(&id) = self.paths_map.get(path) {
+    /// Interns a string path and returns its PathId.
+    /// If the path already exists, returns its existing PathId.
+    /// These paths are normalized so that paths that end in the same
+    /// place all have the same url.
+    ///
+    /// Paths are also validated as existing at time of interning.
+    pub fn intern_path(&mut self, path: &PathBuf) -> PathId {
+        let abs_path = self.base_path.join(path);
+        let normalized_path = self.normalize_path(&abs_path);
+
+        if let Some(&id) = self.paths_map.get(&normalized_path) {
             return id;
         }
+
         let id = self.paths.len();
-        self.names.push(path.to_string());
-        self.names_map.insert(path.to_string(), id);
+        let exists = normalized_path.try_exists().unwrap_or(false);
+        let is_dir = normalized_path.is_dir();
+        let validation = if exists { if is_dir { PathValidation::Dir } else { PathValidation::File } } else { PathValidation::Missing };
+        self.paths_validation.push(validation);
+        self.paths.push(normalized_path.clone());
+        self.paths_map.insert(normalized_path, id);
         id
     }
 
+    /// We do non-filesystem canonicalization
+    /// Which can create issues when referencing
+    /// symbolic links.
+    fn normalize_path(&self, path: &Path) -> PathBuf {
+        let mut result = PathBuf::new();
+
+        for component in path.components() {
+            match component {
+                Component::CurDir => {
+                    // Skip "." components
+                }
+                Component::ParentDir => {
+                    // Go up one directory by popping the last component
+                    result.pop();
+                }
+                _ => {
+                    result.push(component.as_os_str());
+                }
+            }
+        }
+
+        result
+    }
+
     /// Resolves a StyleId back to its string name.
+    /// Useful for debugging
     #[allow(dead_code)]
     pub fn resolve_name(&self, id: StyleId) -> Option<&str> {
         self.names.get(id).map(|s| s.as_str())
@@ -289,8 +368,16 @@ impl StyleRegistry {
     /// Expands a list of raw style entries like "bold", "italic", "fontSize" with value "3", "customStyle"
     /// Into a list of atomic styles like fontWeight: bold, fontSize: 3.0, etc
     pub fn expand_raw_styles(&mut self, entries: &Vec<RawStyle>) -> (Vec<AtomicStyle>, Vec<StyleId>) {
+        // This set lets us prioritize merged styles, so that later defined styles take precedence over
+        // previously defined styles. Later down we iterate style expansions in reverse.
         let mut atomic_set : HashSet<StyleId> = HashSet::new();
+
+        // A list of style ids that are forwarded, essentially making them parameters of the style
+        // If you define a style with a forward {myStyle = >fontWeight + >color: #FF0000 }
+        // Forwards would contain the style ids for fontWeight and color
         let mut forwards : Vec<StyleId> = vec![];
+
+        // A list of atomic styles that this set of raw styles has been expanded to
         let mut atomic_styles = vec![];
 
         // We expand the raw style entries into definitions
@@ -298,7 +385,7 @@ impl StyleRegistry {
         // Defined styles are expanded from already expanded styles
         // We reverse the order so the later styles get precedence
         entries.iter().rev().for_each(|raw| {
-            // Names starting with > are considered forwarded
+            // Names starting with > are considered forwarded or proxied
             let forward = raw.name.starts_with(Chars::FORWARD);
             let clean_name = if forward { raw.name.trim_start_matches(Chars::FORWARD) } else { raw.name };
             let id = self.intern_name(clean_name);
@@ -337,20 +424,26 @@ impl StyleRegistry {
                 // to its own atomic entries. values are separated with ">"
                 // forwarded values are raw unparsed strings
                 if let (Some(raw_value), Some(fwd)) = (raw.value, self.forwarders.get(&id).cloned()) {
-                    // Example forward #FF0000 > bold
                     for (i, value) in raw_value.split(Chars::FORWARD).enumerate() {
-                        // Forwards can only forward to atomic styles and must not be set already
                         if let Some(&forwards_to) = fwd.get(i)
                             && self.is_atomic(&forwards_to)
-                            && !atomic_set.contains(&forwards_to)
                         {
-                            // We use the atomic parser to parse the expected value
                             let forward_value = self.builtins[forwards_to].parser.parse(value);
-                            atomic_set.insert(forwards_to);
-                            atomic_styles.push(AtomicStyle {
-                                id: forwards_to,
-                                value: self.transform_value(forward_value),
-                            });
+
+                            // If it's already in the set, we need to UPDATE it, not skip it
+                            if atomic_set.contains(&forwards_to) {
+                                // Find and update the existing atomic style
+                                if let Some(existing) = atomic_styles.iter_mut().find(|a| a.id == forwards_to) {
+                                    existing.value = self.transform_value(forward_value);
+                                }
+                            } else {
+                                // Add new
+                                atomic_set.insert(forwards_to);
+                                atomic_styles.push(AtomicStyle {
+                                    id: forwards_to,
+                                    value: self.transform_value(forward_value),
+                                });
+                            }
                         }
                     }
                 }
@@ -364,30 +457,63 @@ impl StyleRegistry {
     }
 
     /// File type style values need to hold a file reference, so we handle
-    /// interning and storing here
-    // TODO implement font name interning or lookup
+    /// interning and storing here.
+    ///
+    /// Fonts, Images and Directory paths are normalized and interned.
+    ///
+    /// Style values need to be quick to copy, thus all of our
+    /// file based style values hold path_ids of some kind or another.
     fn transform_value(&mut self, value: StyleValue) -> StyleValue {
         match value {
-            StyleValue::FontUrl(font_url) => {
-                let file_id = self.intern_path(&font_url);
+            StyleValue::FontPath(path) => {
+                let path_id = self.intern_path(&path);
+                let font_family = self.font_families.get(&path_id);
 
-                if let Ok(url) = self.base_path.join(&font_url){
-                    self.font_urls.insert(file_id, url);
-                    Font(file_id)
-                } else {
-                    StyleValue::Invalid(ValueErrors::URL, ValueHelp::URL)
-                }
-            },
-            StyleValue::ImageUrl(image_url) => {
-                let file_id = self.intern_path(&image_url);
+                let normalized = &self.paths[path_id];
+                eprintln!("   Base path: {}", self.base_path.display());
+                eprintln!("   Normalized path: {}", normalized.display());
 
-                if let Ok(url) = self.base_path.join(&image_url){
-                    self.image_urls.insert(file_id, url);
-                    Image(file_id)
+                let font_count = match self.font_families.get(&path_id) {
+                    Some(family) => {
+                        family.faces.len()
+                    }
+                    None => {
+                        let normalized = &self.paths[path_id];
+                        let family = gather_fonts(normalized);
+                        let font_count = family.faces.len();
+                        self.font_families.insert(path_id, family);
+                        font_count
+                    }
+                };
+
+                if font_count > 0 {
+                    Font(path_id)
                 } else {
-                    StyleValue::Invalid(ValueErrors::URL, ValueHelp::URL)
+                    StyleValue::Invalid(ValueErrors::FONT_EMPTY, ValueHelp::FONT_EMPTY)
                 }
-            },
+            }
+
+            StyleValue::ImagePath(path) => {
+                let image_path_id = self.intern_path(&path);
+                let validation = &self.paths_validation[image_path_id];
+
+                if matches!(validation, PathValidation::File) {
+                    Image(image_path_id)
+                } else {
+                    StyleValue::Invalid(ValueErrors::FILE, ValueHelp::FILE)
+                }
+            }
+
+            StyleValue::DirectoryPath(path) => {
+                let dir_path_id = self.intern_path(&path);
+                let validation = &self.paths_validation[dir_path_id];
+
+                if matches!(validation, PathValidation::Dir) {
+                    Directory(dir_path_id)
+                } else {
+                    StyleValue::Invalid(ValueErrors::DIRECTORY, ValueHelp::DIRECTORY)
+                }
+            }
             _ => value
         }
     }
@@ -399,12 +525,13 @@ impl StyleRegistry {
         self.definitions.get(&id)
     }
 
+    /// Checks if the style is a base atomic style
     #[inline(always)]
     pub fn is_atomic(&self, id: &StyleId) -> bool {
         id < &self.first_style
     }
 
-    /// Is this style id a builtin
+    /// Checks if the style id is a builtin style definition (not an atomic)
     #[inline(always)]
     pub fn is_custom(&self, id: &StyleId) -> bool {
         id >= &self.first_custom_style

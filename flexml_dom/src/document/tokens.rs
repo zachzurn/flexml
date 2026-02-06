@@ -11,9 +11,9 @@ pub enum Token {
     StyleName,
 
     // Style value unquoted
-    #[regex(r"[ \t]*:[ \t]*([A-Za-z0-9._/#:%?&=@-]+)", priority = 6)]
+    #[regex(r"[ \t]*:[ \t]*[A-Za-z0-9._/>#:%?&=@-]+", priority = 6)]
     // Quoted variant for urls
-    #[regex(r#"[ \t]*:[ \t]*"([^"]*)""#, priority = 6)]
+    #[regex(r#"[ \t]*:[ \t]*"[^"]*""#, priority = 6)]
     StyleValue,
 
     #[token("=", priority = 5)]

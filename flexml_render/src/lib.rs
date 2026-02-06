@@ -271,19 +271,21 @@ mod tests {
     fn render_flexml_test(filename: &str) {
         //let input = "[width: 5in + height: 2in + bgColor: #ff0000AA this is some text \r\n and some more on a new line] [box + bgColor: #00FF00AA + height: 1in]";
 
-        let sample_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        let in_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("..")
             .join("resources")
             .join("test")
-            .join("in")
-            .join(format!("{}.{}", filename, "flexml"));
+            .join("in");
+
+
+        let sample_file = in_folder.join(format!("{}.{}", filename, "flexml"));
 
         let input = std::fs::read_to_string(sample_file.to_str().unwrap()).unwrap();
 
 
         let document = FlexmlDocument::new(&input)
+            .with_base_path(in_folder)
             .parse();
-
 
         document.print_document();
 
@@ -295,8 +297,6 @@ mod tests {
             .join("test")
             .join("out")
             .join(format!("{}.{}", filename, "png"));
-
-        let input = std::fs::read_to_string(sample_file.to_str().unwrap()).unwrap();
 
         pollster::block_on(render_layout(&layout, &out)).unwrap();
     }

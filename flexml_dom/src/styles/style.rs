@@ -1,6 +1,7 @@
+use std::fmt::{Display, Formatter};
+use std::path::{Path, PathBuf};
 use crate::strings::{Chars, ValueErrors, ValueHelp};
 use crate::styles::context::Dimension;
-use crate::styles::style::StyleValue::{FontUrl, ImageUrl, PathUrl};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Rgba {
@@ -10,11 +11,11 @@ pub struct Rgba {
     pub(crate) a: u8
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub enum UrlType {
-    Image,
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum PathType {
+    Directory,
     Font,
-    Path
+    Image
 }
 
 pub enum StyleValueParser {
@@ -24,7 +25,7 @@ pub enum StyleValueParser {
     PositiveNumber,
     Match(&'static [&'static str]),
     Color,
-    Url(&'static UrlType),
+    Path(PathType),
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -32,29 +33,23 @@ pub enum StyleValue {
     /// Forward is a special style value
     /// only used in built ins as a proxy for Empty
     Forward,
-
-    /// Parse a positive dimension
     NegativeNumber(Dimension),
     PositiveNumber(Dimension),
-
     Float(f32),
-
-    FontUrl(String),
-    ImageUrl(String),
-    PathUrl(String),
-
-    Match(u8),
+    FontPath(PathBuf),
+    ImagePath(PathBuf),
+    DirectoryPath(PathBuf),
+    Match(u8, &'static str),
     Color(Rgba),
-    Font(FontId),
-    Image(ImageId),
+    Font(PathId),
+    Image(PathId),
+    Directory(PathId),
     Unset,
     Invalid(&'static str, &'static [&'static str]),
     Empty,
 }
 
-pub type FileId = usize;
-pub type FontId = usize;
-pub type ImageId = usize;
+pub type PathId = usize;
 pub type StyleId = usize;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -111,13 +106,13 @@ static DIMENSION_KIND: &[DimensionKind; 7] = &[
 impl StyleValueParser {
 
     pub fn parse(&self, s: &str) -> StyleValue {
-        match *self {
+        match self {
             StyleValueParser::Match(matches) => Self::parse_match(matches, s),
             StyleValueParser::MatchOrFloat(matches) => Self::parse_match_or_float(matches, s),
             StyleValueParser::Color => Self::parse_color(s),
             StyleValueParser::Number => Self::parse_number(s),
             StyleValueParser::PositiveNumber => Self::parse_positive_number(s),
-            StyleValueParser::Url(kind) => Self::parse_url(kind, s),
+            StyleValueParser::Path(kind) => Self::parse_path(kind, s),
             StyleValueParser::Float => Self::parse_float(s),
         }
     }
@@ -126,7 +121,7 @@ impl StyleValueParser {
         let value = StyleValueParser::parse_match(matches, s);
 
         match value {
-            StyleValue::Match(_) => value,
+            StyleValue::Match(_,_) => value,
             _ => Self::parse_float(s)
         }
     }
@@ -224,16 +219,41 @@ impl StyleValueParser {
         StyleValue::Empty
     }
 
-    fn parse_url(kind: &UrlType, s: &str) -> StyleValue {
+    fn parse_path(kind: &PathType, s: &str) -> StyleValue {
         if s == "none" { return StyleValue::Unset }
 
-        match kind {
-            UrlType::Font => FontUrl(s.to_string()),
-            UrlType::Image => ImageUrl(s.to_string()),
-            UrlType::Path => PathUrl(s.to_string()),
-        }
+        let path = Path::new(s);
+        let is_dir = path.is_dir();
+        let ext = path.extension().unwrap_or("".as_ref()).to_ascii_lowercase();
 
-        //StyleValue::Invalid(ValueErrors::URL, ValueHelp::URL)
+        match kind {
+            PathType::Image => {
+                if is_dir {
+                    StyleValue::Invalid(ValueErrors::FILE, ValueHelp::FILE)
+                }
+                else if ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "svg" {
+                    StyleValue::ImagePath(path.to_path_buf())
+                } else {
+                    StyleValue::Invalid(ValueErrors::IMAGE, ValueHelp::IMAGE)
+                }
+            },
+            PathType::Font => {
+                if is_dir { StyleValue::Invalid(ValueErrors::FILE, ValueHelp::FILE) }
+                else if ext == "ttf" || ext == "otf" || ext == "woff" || ext == "woff2" {
+                    StyleValue::FontPath(path.to_path_buf())
+                } else {
+                    StyleValue::Invalid(ValueErrors::FONT, ValueHelp::FONT)
+                }
+            },
+            PathType::Directory => {
+                if is_dir {
+                    StyleValue::DirectoryPath(path.to_path_buf())
+                }
+                else {
+                    StyleValue::Invalid(ValueErrors::DIRECTORY, ValueHelp::DIRECTORY)
+                }
+            },
+        }
     }
 
     fn parse_match(matches: &'static [&'static str], s: &str) -> StyleValue {
@@ -244,7 +264,7 @@ impl StyleValueParser {
 
         for (i, v) in matches.iter().enumerate() {
             if v.eq_ignore_ascii_case(&lc) {
-                return StyleValue::Match(i as u8);
+                return StyleValue::Match(i as u8, v);
             }
         }
 
@@ -344,4 +364,49 @@ impl StyleValueParser {
         }
     }
 
+}
+
+
+
+impl Display for StyleValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StyleValue::Empty => {
+                write!(f, "Empty")
+            }
+            StyleValue::NegativeNumber(dim) | StyleValue::PositiveNumber(dim) => {
+                write!(f, "{}", dim)
+            }
+            StyleValue::DirectoryPath(p) | StyleValue::FontPath(p) | StyleValue::ImagePath(p) => {
+                write!(f, "{}", p.to_str().unwrap_or("invalid path"))
+            }
+            StyleValue::Match(_idx, name) => {
+                write!(f, "{}", name)
+            }
+            StyleValue::Color(rgba) => {
+                write!(f, "{}", format!("#{:02X}{:02X}{:02X}{:02X}", rgba.r, rgba.g, rgba.b, rgba.a))
+            }
+            StyleValue::Forward => {
+                write!(f, "Fwd")
+            }
+            StyleValue::Invalid(_,_) => {
+                write!(f, "Err")
+            }
+            StyleValue::Float(fl) => {
+                write!(f, "{}", fl)
+            }
+            StyleValue::Unset => {
+                write!(f, "Uns")
+            }
+            StyleValue::Font(id) => {
+                write!(f, "Fnt({})", id)
+            }
+            StyleValue::Image(id) => {
+                write!(f, "Img({})", id)
+            }
+            StyleValue::Directory(id) => {
+                write!(f, "Dir({})", id)
+            }
+        }
+    }
 }
